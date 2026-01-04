@@ -12,8 +12,11 @@ pnpm-debug.log*
 *.tgz
 package-lock.json
 .DS_Store
+secret/
+secret/*.json
 /.husky/_
 /.nest-cli.json
+
 # compiled output
 /dist
 /node_modules
@@ -30,6 +33,10 @@ lerna-debug.log*
 
 # OS
 .DS_Store
+
+
+# Secret
+/secret
 
 # Tests
 /coverage
