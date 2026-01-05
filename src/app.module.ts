@@ -1,16 +1,19 @@
 import { Module } from '@nestjs/common';
 import { AppController } from './app.controller';
 import { AppService } from './app.service';
-import { FirebaseModule } from './firebase/firebase.module';
-import { UserModule } from './users/user.module';
-import { ChildrenModule } from './children/children.module';
-import { CollaboratorModule } from './collaborator/collaborator.module';
-import { CompanyModule } from './companies/company.module';
 import { AdminModule } from './admin/admin.module';
+import { FirebaseModule } from './firebase/firebase.module';
+import { AuthModule } from './auth/auth.module';
+import { ConfigModule } from '@nestjs/config';
+import { CollaboratorModule } from './collaborator/collaborator.module';
 
 @Module({
-  imports: [FirebaseModule, UserModule, ChildrenModule, CollaboratorModule, CompanyModule, AdminModule],
-  controllers: [AppController],
+  imports: [
+    ConfigModule.forRoot({ isGlobal: true }),
+    FirebaseModule.forRoot(),
+    AuthModule,
+    CollaboratorModule,
+  ],
   providers: [AppService],
 })
 export class AppModule {}

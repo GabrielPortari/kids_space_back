@@ -4,13 +4,17 @@ import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 import { Collaborator } from '../models/collaborator.model';
 import { BaseModel } from '../models/base.model';
+import { FirebaseService } from 'src/firebase/firebase.service';
 
 @Injectable()
 export class CollaboratorService {
-  private collection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
+  constructor(private readonly firebaseService: FirebaseService) {}
 
-  constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-    this.collection = this.firestore.collection('collaborator');
+  async createCollaborator(createCollaborator: CreateCollaboratorDto){
+    return await this.firebaseService.createUser({
+      email: createCollaborator.email,
+      password: createCollaborator.password,
+      displayName: createCollaborator.name,
+    });
   }
-
 }

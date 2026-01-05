@@ -15,6 +15,7 @@ package-lock.json
 secret/
 secret/*.json
 /.husky/_
+/docs
 /.nest-cli.json
 
 # compiled output
