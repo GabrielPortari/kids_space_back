@@ -6,9 +6,10 @@ import { UsersModule } from './users/users.module';
 import { ChildrenModule } from './children/children.module';
 import { CollaboratorsModule } from './collaborators/collaborators.module';
 import { CompaniesModule } from './companies/companies.module';
+import { AdminsModule } from './admin/admin.module';
 
 @Module({
-  imports: [FirebaseModule, UsersModule, ChildrenModule, CollaboratorsModule, CompaniesModule],
+  imports: [FirebaseModule, UsersModule, ChildrenModule, CollaboratorsModule, CompaniesModule, AdminsModule],
   controllers: [AppController],
   providers: [AppService],
 })

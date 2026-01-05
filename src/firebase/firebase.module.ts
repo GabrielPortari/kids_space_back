@@ -36,7 +36,11 @@ if (serviceAccountPath && existsSync(serviceAccountPath)) {
       provide: 'FIRESTORE',
       useValue: admin.firestore(),
     },
+    {
+      provide: 'FIREBASE_ADMIN',
+      useValue: admin,
+    },
   ],
-  exports: ['FIRESTORE'],
+  exports: ['FIRESTORE', 'FIREBASE_ADMIN'],
 })
 export class FirebaseModule {}

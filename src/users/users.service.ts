@@ -13,34 +13,4 @@ export class UsersService {
     this.collection = this.firestore.collection('users');
   }
 
-  async create(dto: CreateUserDto) {
-    const data = BaseModel.toFirestore(dto as any);
-    const ref = await this.collection.add(data as any);
-    const snap = await ref.get();
-    return BaseModel.fromFirestore.call(User as any, snap);
-  }
-
-  async findAll() {
-    const snap = await this.collection.get();
-    return snap.docs.map(d => BaseModel.fromFirestore.call(User as any, d));
-  }
-
-  async findOne(id: string) {
-    const doc = await this.collection.doc(id).get();
-    if (!doc.exists) throw new NotFoundException('User not found');
-    return BaseModel.fromFirestore.call(User as any, doc);
-  }
-
-  async update(id: string, dto: UpdateUserDto) {
-    const ref = this.collection.doc(id);
-    await ref.set(BaseModel.toFirestore(dto as any), { merge: true });
-    const doc = await ref.get();
-    if (!doc.exists) throw new NotFoundException('User not found');
-    return BaseModel.fromFirestore.call(User as any, doc);
-  }
-
-  async remove(id: string) {
-    await this.collection.doc(id).delete();
-    return { deleted: true };
-  }
 }
