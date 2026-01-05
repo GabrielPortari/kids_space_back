@@ -4,19 +4,27 @@ import { Observable } from 'rxjs';
 
 @Injectable()
 export class FirebaseAuthGuard implements CanActivate {
-    async canActivate(context: ExecutionContext): Promise<boolean> {
+    async canActivate(context: ExecutionContext) {
         const request = context.switchToHttp().getRequest();
-        const authHeader = request.headers?.authorization;
-        if(!authHeader || !authHeader.startsWith('Bearer ')) {
+        const authHeader = (request.headers.authorization || '').split(' ')[1];
+        
+        if(!authHeader) {
             throw new UnauthorizedException('No token provided.');
         }
-        const token = authHeader.split(' ')[1];
+
+        let decodedToken;
         try{
-            const decodedToken = await firebaseAdmin.auth().verifyIdToken(token);
-            request.user = decodedToken;
-            return true;
+            decodedToken = await firebaseAdmin.auth().verifyIdToken(authHeader);
         }catch{
             throw new UnauthorizedException('Invalid token.');
         }
+
+        // checar claim admin
+        if(!decodedToken.admin){
+            throw new UnauthorizedException('Insufficient permissions.');
+        }
+
+        request.user = decodedToken;
+        return true;
     }
 }

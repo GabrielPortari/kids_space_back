@@ -34,9 +34,12 @@ lerna-debug.log*
 # OS
 .DS_Store
 
+# Scripts
+/scripts
 
 # Secret
 /secret
+src/serviceAccountKey.json
 
 # Tests
 /coverage

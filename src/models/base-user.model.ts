@@ -1,6 +1,6 @@
 import { BaseModel } from './base.model';
 
-export type UserType = 'child' | 'user' | 'collaborator' | 'admin';
+export type UserType = 'child' | 'user' | 'collaborator' | 'companyAdmin' | 'systemAdmin';
 
 export class BaseUser extends BaseModel {
   userType: UserType;
