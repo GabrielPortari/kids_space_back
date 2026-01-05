@@ -6,11 +6,11 @@ import { Company } from '../models/company.model';
 import { BaseModel } from '../models/base.model';
 
 @Injectable()
-export class CompaniesService {
+export class CompanyService {
   private collection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
 
   constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-    this.collection = this.firestore.collection('companies');
+    this.collection = this.firestore.collection('company');
   }
 
 }

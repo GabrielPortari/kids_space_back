@@ -1,10 +1,10 @@
 import { Controller, Get, Post, Body, Param, Put, Delete } from '@nestjs/common';
-import { CompaniesService } from './companies.service';
+import { CompanyService } from './company.service';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 
-@Controller('companies')
-export class CompaniesController {
-  constructor(private readonly svc: CompaniesService) {}
+@Controller('company')
+export class CompanyController {
+  constructor(private readonly svc: CompanyService) {}
 
 }

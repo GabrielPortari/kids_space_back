@@ -1,16 +1,16 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
-import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
-import { Collaborator } from '../models/collaborator.model';
+import { CreateUserDto } from './dto/create-user.dto';
+import { UpdateUserDto } from './dto/update-user.dto';
+import { User } from '../models/user.model';
 import { BaseModel } from '../models/base.model';
 
 @Injectable()
-export class CollaboratorsService {
+export class UserService {
   private collection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
 
   constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-    this.collection = this.firestore.collection('collaborators');
+    this.collection = this.firestore.collection('users');
   }
 
 }
