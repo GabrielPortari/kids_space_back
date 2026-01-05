@@ -1,12 +1,14 @@
-import { UserType } from '../../models/base-user.model';
+import { BaseModel } from './base.model';
 
-export class CreateUserDto {
+export type UserType = 'child' | 'user' | 'collaborator' | 'admin';
+
+export class BaseUser extends BaseModel {
   userType: UserType;
   photoUrl?: string;
   name?: string;
   email?: string;
   phone?: string;
-  birthDate?: string;
+  birthDate?: Date | string;
   document?: string;
   address?: string;
   addressNumber?: string;
@@ -16,5 +18,9 @@ export class CreateUserDto {
   state?: string;
   zipCode?: string;
   companyId?: string;
-  childrenIds?: string[];
+
+  constructor(init?: Partial<BaseUser>) {
+    super(init);
+    Object.assign(this, init);
+  }
 }

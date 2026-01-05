@@ -1,7 +1,5 @@
-import { UserType } from '../../models/base-user.model';
-
-export class CreateUserDto {
-  userType: UserType;
+export class CreateChildDto {
+  userType?: string;
   photoUrl?: string;
   name?: string;
   email?: string;
@@ -16,5 +14,6 @@ export class CreateUserDto {
   state?: string;
   zipCode?: string;
   companyId?: string;
-  childrenIds?: string[];
+  responsibleUserIds?: string[];
+  isActive?: boolean;
 }
