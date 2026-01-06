@@ -1,9 +1,10 @@
-import { Injectable } from "@nestjs/common";
+import { BadRequestException, Injectable } from "@nestjs/common";
 import { CreateRequest } from "firebase-admin/lib/auth/auth-config";
 import { UserRecord } from "firebase-admin/lib/auth/user-record";
 import * as firebaseAdmin from 'firebase-admin';
 import { FirebaseConfigService } from "./firebase-config-service";
 import axios from "axios";
+import { DecodedIdToken } from "firebase-admin/lib/auth/token-verifier";
 
 @Injectable()
 export class FirebaseService {
@@ -13,7 +14,11 @@ export class FirebaseService {
     }
 
     async createUser(props: CreateRequest): Promise<UserRecord>{
-        return await firebaseAdmin.auth().createUser(props);
+        return await firebaseAdmin.auth().createUser(props).catch(this.handleFirebaseAuthError) as UserRecord;
+    }
+
+    async verifyIdToken(idToken: string): Promise<DecodedIdToken>{
+        return await firebaseAdmin.auth().verifyIdToken(idToken).catch(this.handleFirebaseAuthError) as DecodedIdToken;
     }
 
     async signInWithEmailAndPassword(email: string, password: string) {
@@ -22,9 +27,37 @@ export class FirebaseService {
             email,
             password,
             returnSecureToken: true,
-        });
+        }).catch(this.handleRestApiError);
         return response;
     }
+
+    async refreshAuthToken(refreshToken: string) {
+        const{
+            id_token: idToken,
+            refresh_token: newRefreshToken,
+            expires_in: expiresIn,
+        } = await this.sendRefreshAuthTokenRequest(refreshToken).catch(this.handleRestApiError);
+
+        return {
+            idToken, 
+            refreshToken: newRefreshToken, 
+            expiresIn
+        };
+    }
+
+    private async sendRefreshAuthTokenRequest(refreshToken: string){
+        const url: string = `https://securetoken.googleapis.com/v1/token?key=${this.apiKey}`;
+        const payload = {
+            grant_type: 'refresh_token',
+            refresh_token: refreshToken
+        };
+        return await this.sendPostRequest(url, payload);
+    }
+
+    async revokeRefreshTokens(uid: string){
+        return await firebaseAdmin.auth().revokeRefreshTokens(uid).catch(this.handleFirebaseAuthError);
+    }
+
     private async sendPostRequest(url: string, body: any){
         const response = await axios.post(url, body, {
             headers: {
@@ -32,5 +65,26 @@ export class FirebaseService {
             }
         });
         return response.data;
+    }
+
+    private handleFirebaseAuthError(error: any){
+        if(error.code?.startsWith('auth/')){
+            throw new BadRequestException(error.message);
+        }
+        throw new Error(error.message);
+    }
+
+    private handleRestApiError(error: any){
+        if(error.response?.data?.error?.code === 400){
+            const messageKey = error.response?.data?.error?.message;
+            const message = {
+                INVALIDD_TOKEN_CREDENTIALS: 'Invalid login credentials',
+                INVALID_REFRESH_TOKEN: 'Invalid refresh token',
+                TOKEN_EXPIRED: 'Token expired',
+                USER_DISABLED: 'User disabled',
+            }[messageKey] ?? messageKey;
+            throw new BadRequestException(message);
+        }
+        throw new Error(error.message);
     }
 }

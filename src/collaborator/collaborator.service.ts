@@ -14,7 +14,6 @@ export class CollaboratorService {
     return await this.firebaseService.createUser({
       email: createCollaborator.email,
       password: createCollaborator.password,
-      displayName: createCollaborator.name,
     });
   }
 }

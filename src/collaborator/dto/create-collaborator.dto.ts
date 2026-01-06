@@ -1,22 +1,25 @@
 import { UserType } from 'src/models/base-user.model';
 import {
   IsEmail,
-  IsIn,
   IsOptional,
   IsString,
   IsDateString,
   MinLength,
+  IsIn,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCollaboratorDto {
   
-  @ApiProperty({
+  @ApiPropertyOptional({
     enum: ['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'],
     default: 'collaborator',
     description: 'Tipo de usuário',
+    readOnly: true,
   })
-  userType: UserType = 'collaborator';
+  @IsOptional()
+  @IsIn(['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'])
+  userType?: UserType = 'collaborator';
 
   @ApiPropertyOptional({ description: 'URL da foto' })
   @IsOptional()
@@ -28,8 +31,7 @@ export class CreateCollaboratorDto {
   @IsString()
   name?: string;
 
-  @ApiPropertyOptional({ description: 'E-mail do usuário', format: 'email' })
-  @IsOptional()
+  @ApiProperty({ description: 'E-mail do usuário', format: 'email' })
   @IsEmail()
   email?: string;
 
@@ -83,13 +85,11 @@ export class CreateCollaboratorDto {
   @IsString()
   zipCode?: string;
 
-  @ApiPropertyOptional({ description: 'ID da empresa' })
-  @IsOptional()
+  @ApiProperty({ description: 'ID da empresa' })
   @IsString()
   companyId?: string;
 
-  @ApiPropertyOptional({ description: 'Senha (mínimo 6 caracteres)', minLength: 6 })
-  @IsOptional()
+  @ApiProperty({ description: 'Senha (mínimo 6 caracteres)', minLength: 6 })
   @IsString()
   @MinLength(6)
   password?: string;
