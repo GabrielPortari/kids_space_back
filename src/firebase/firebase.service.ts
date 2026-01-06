@@ -17,8 +17,8 @@ export class FirebaseService {
         return await firebaseAdmin.auth().createUser(props).catch(this.handleFirebaseAuthError) as UserRecord;
     }
 
-    async verifyIdToken(idToken: string): Promise<DecodedIdToken>{
-        return await firebaseAdmin.auth().verifyIdToken(idToken).catch(this.handleFirebaseAuthError) as DecodedIdToken;
+    async verifyIdToken(idToken: string, checkRevoked = false): Promise<DecodedIdToken>{
+        return await firebaseAdmin.auth().verifyIdToken(idToken, checkRevoked).catch(this.handleFirebaseAuthError) as DecodedIdToken;
     }
 
     async signInWithEmailAndPassword(email: string, password: string) {
@@ -86,5 +86,9 @@ export class FirebaseService {
             throw new BadRequestException(message);
         }
         throw new Error(error.message);
+    }
+
+    async setCumstomUserClaims(uid: string, claims: Record<string, any>){
+        return await firebaseAdmin.auth().setCustomUserClaims(uid, claims);
     }
 }

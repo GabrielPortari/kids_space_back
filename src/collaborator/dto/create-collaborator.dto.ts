@@ -6,20 +6,20 @@ import {
   IsDateString,
   MinLength,
   IsIn,
+  IsArray,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCollaboratorDto {
   
   @ApiPropertyOptional({
-    enum: ['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'],
-    default: 'collaborator',
     description: 'Tipo de usuário',
-    readOnly: true,
+    example: ['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'],
   })
-  @IsOptional()
-  @IsIn(['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'])
-  userType?: UserType = 'collaborator';
+  @IsArray()
+  @IsString({ each: true })
+  @IsIn(['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'], { each: true })
+  roles?: string[];
 
   @ApiPropertyOptional({ description: 'URL da foto' })
   @IsOptional()

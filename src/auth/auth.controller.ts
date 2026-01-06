@@ -2,7 +2,7 @@ import { Body, Controller, HttpCode, Post, UseGuards } from "@nestjs/common";
 import { LoginDto } from "./dto/login.dto";
 import { AuthService } from "./auth.service";
 import { ApiBearerAuth } from "@nestjs/swagger";
-import { AuthGuard } from "./dto/auth.guard";
+import { AuthGuard } from "./auth.guard";
 import { RefreshTokenDto } from "./dto/refresh-token.dto";
 
 @Controller('auth')

@@ -3,7 +3,7 @@ import { CollaboratorService } from './collaborator.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/dto/auth.guard';
+import { AuthGuard } from 'src/auth/auth.guard';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
 
 @Controller('collaborator')

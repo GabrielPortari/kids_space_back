@@ -18,7 +18,7 @@ export class AuthGuard implements CanActivate{
         }
         
         try{
-            await this.firebaseService.verifyIdToken(token);
+            await this.firebaseService.verifyIdToken(token, true);
             return true;
         }catch{
             return false;
