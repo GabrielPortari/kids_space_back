@@ -43,10 +43,24 @@ export class FirebaseModule {
             },
         };
         
+        const firestoreProvider = {
+            provide: 'FIRESTORE',
+            inject: ['FIREBASE_ADMIN'],
+            useFactory: (firebaseAdminInstance: typeof firebaseAdmin) => {
+                const fsInstance = firebaseAdminInstance.firestore();
+                try {
+                    fsInstance.settings({ ignoreUndefinedProperties: true });
+                } catch (e) {
+                    // ignore if settings not supported in this environment/version
+                }
+                return fsInstance;
+            }
+        };
+        
         return {
             module: FirebaseModule,
-            providers: [firebaseConfigProvider, firebaseProvider, FirebaseService],
-            exports: [firebaseConfigProvider, firebaseProvider, FirebaseService],
+            providers: [firebaseConfigProvider, firebaseProvider, firestoreProvider, FirebaseService],
+            exports: [firebaseConfigProvider, firebaseProvider, firestoreProvider, FirebaseService],
         }
     }
 }

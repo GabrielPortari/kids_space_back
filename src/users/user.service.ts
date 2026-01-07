@@ -1,7 +1,6 @@
 import { Inject, Injectable, NotFoundException } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { CreateUserDto } from './dto/create-user.dto';
-import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from '../models/user.model';
 import { BaseModel } from '../models/base.model';
 
@@ -13,4 +12,16 @@ export class UserService {
     this.collection = this.firestore.collection('users');
   }
 
+  async createUser(createUserDto: CreateUserDto) {
+    const ref = this.collection.doc();
+    const user = new User({
+      id: ref.id,
+      ...createUserDto,
+    });
+
+    const data = BaseModel.toFirestore(user);
+    await ref.set(data);
+
+    return user;
+  }
 }

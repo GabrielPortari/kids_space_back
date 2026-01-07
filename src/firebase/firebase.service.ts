@@ -88,7 +88,11 @@ export class FirebaseService {
         throw new Error(error.message);
     }
 
-    async setCumstomUserClaims(uid: string, claims: Record<string, any>){
+    async setCustomUserClaims(uid: string, claims: Record<string, any>){
         return await firebaseAdmin.auth().setCustomUserClaims(uid, claims);
+    }
+
+    async createDocument(collection: string, id: string, data: any){
+        return await firebaseAdmin.firestore().collection(collection).doc(id).set(data);
     }
 }

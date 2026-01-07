@@ -5,6 +5,7 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { AuthGuard } from 'src/auth/auth.guard';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
+import { RolesGuard } from 'src/roles/roles.guard';
 
 @Controller('collaborator')
 export class CollaboratorController {
@@ -13,6 +14,8 @@ export class CollaboratorController {
   ) {}
 
   @Post('register')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin'))
   async registerCollaborator(@Body() createCollaboratorDto: CreateCollaboratorDto) {
     return this.service.createCollaborator(createCollaboratorDto);
   }

@@ -11,14 +11,17 @@ import {
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateCollaboratorDto {
-  
-  @ApiPropertyOptional({
-    description: 'Tipo de usuário',
-    example: ['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'],
-  })
+  @ApiPropertyOptional({ description: 'Tipo de colaborador', example: 'collaborator' })
+  @IsOptional()
+  @IsString()
+  @IsIn(['collaborator', 'companyAdmin'])
+  userType?: UserType;
+
+  @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['collaborator'] })
+  @IsOptional()
   @IsArray()
   @IsString({ each: true })
-  @IsIn(['child', 'user', 'collaborator', 'companyAdmin', 'systemAdmin'], { each: true })
+  @IsIn(['collaborator', 'companyAdmin'], { each: true })
   roles?: string[];
 
   @ApiPropertyOptional({ description: 'URL da foto' })

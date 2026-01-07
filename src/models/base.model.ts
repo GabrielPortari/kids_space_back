@@ -12,6 +12,10 @@ export class BaseModel {
   static toFirestore<T extends BaseModel>(model: T) {
     const data: any = { ...model };
     delete data.id;
+    // remove undefined properties to avoid Firestore error
+    Object.keys(data).forEach((k) => {
+      if (data[k] === undefined) delete data[k];
+    });
     data.updatedAt = admin.firestore.FieldValue.serverTimestamp();
     if (!model.createdAt) data.createdAt = admin.firestore.FieldValue.serverTimestamp();
     return data;

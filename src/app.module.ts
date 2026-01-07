@@ -7,6 +7,8 @@ import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
 import { CollaboratorModule } from './collaborator/collaborator.module';
 import { RolesModule } from './roles/roles.module';
+import { User } from './models/user.model';
+import { UserModule } from './users/user.module';
 
 @Module({
   imports: [
@@ -14,6 +16,7 @@ import { RolesModule } from './roles/roles.module';
     FirebaseModule.forRoot(),
     AuthModule,
     CollaboratorModule,
+    UserModule,
     RolesModule,
   ],
   providers: [AppService],
