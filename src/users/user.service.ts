@@ -4,6 +4,8 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { User } from '../models/user.model';
 import { BaseModel } from '../models/base.model';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateChildDto } from 'src/children/dto/create-child.dto';
+import { Child } from 'src/models/child.model';
 
 @Injectable()
 export class UserService {
@@ -59,4 +61,49 @@ export class UserService {
     return userDoc.data();
   }
 
+  async createChild(parent: User, createChildDto: CreateChildDto) {
+    if (!parent.id) throw new BadRequestException('parentId is required to create child');
+    const childrenCollection = this.firestore.collection('children');
+    const ref = childrenCollection.doc();
+    const child = new Child({
+      id: ref.id,
+      responsibleUserIds: [parent.id],
+      companyId: parent.companyId,
+      status: false,
+      userType: createChildDto.userType,
+      photoUrl: createChildDto.photoUrl,
+      name: createChildDto.name,
+      email: createChildDto.email,
+      phone: createChildDto.phone,
+      birthDate: createChildDto.birthDate,
+      document: createChildDto.document,
+      // herda do responsável
+      address: parent.address,
+      addressNumber: parent.addressNumber,
+      addressComplement: parent.addressComplement,
+      neighborhood: parent.neighborhood,
+      city: parent.city,
+      state: parent.state,
+      zipCode: parent.zipCode,
+    });
+
+    const data = BaseModel.toFirestore(child);
+    // add server timestamp
+    (data as any).createdAt = admin.firestore.FieldValue.serverTimestamp();
+
+    // create atomically and confirm parent still exists
+    const parentRef = this.firestore.collection('users').doc(parent.id);
+    await this.firestore.runTransaction(async tx => {
+      const parentSnap = await tx.get(parentRef);
+      if (!parentSnap.exists) throw new BadRequestException('Parent user not found');
+      tx.set(ref, data);
+      // add child id to parent's childrenIds atomically
+      tx.update(parentRef, {
+        childrenIds: admin.firestore.FieldValue.arrayUnion(ref.id),
+      });
+    });
+
+    const saved = await ref.get();
+    return saved.data();
+  }
 }

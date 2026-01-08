@@ -16,7 +16,7 @@ export class CompanyController {
     return this.service.createCompany(createCompanyDto);
   }
 
-  @Post(':companyId/registerCollaborator')
+  @Post(':companyId/collaborator')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
   async registerCollaborator(@Param('companyId') companyId: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {

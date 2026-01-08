@@ -32,13 +32,13 @@ export class AdminController {
 
   @ApiOperation({ summary: 'Atualiza um administrador pelo ID' })
   @ApiParam({ name: 'id', type: String })
-  @ApiBody({ type: UpdateAdminDto })
+  @ApiBody({ type: CreateAdminDto })
   @ApiResponse({ status: 200, description: 'Administrador atualizado.' })
   @Put(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master'))
-  async updateAdmin(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
-    return this.service.updateSystemAdmin(id, updateAdminDto);
+  async updateAdmin(@Param('id') id: string, @Body() createAdminDto: CreateAdminDto) {
+    return this.service.updateSystemAdmin(id, createAdminDto);
   }
 
   @ApiOperation({ summary: 'Deleta um administrador pelo ID' })

@@ -7,6 +7,8 @@ import { IdToken } from 'src/auth/dto/id-token.decorator';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import * as admin from 'firebase-admin';
 import { UpdateUserDto } from './dto/update-user.dto';
+import { CreateChildDto } from 'src/children/dto/create-child.dto';
+import { User } from 'src/models/user.model';
 
 @Controller('user')
 export class UserController {
@@ -34,16 +36,16 @@ export class UserController {
     }
 
     // caso contrário, o usuário deve ser collaborator ou companyAdmin e só pode criar usuários para a própria empresa
-    const collabDoc = await this.firestore.collection('collaborators').doc(uid).get();
-    if (!collabDoc.exists) throw new ForbiddenException('Collaborator not found');
+    const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
+    if (!collaboratorDoc.exists) throw new ForbiddenException('Collaborator not found');
 
-    const collabData = collabDoc.data() as any;
-    const companyIdFromCollab = collabData.companyId;
+    const collabData = collaboratorDoc.data() as any;
+    const companyIdFromCollaborator = collabData.companyId;
 
-    if (!companyIdFromCollab) throw new ForbiddenException('Collaborator has no company assigned');
+    if (!companyIdFromCollaborator) throw new ForbiddenException('Collaborator has no company assigned');
 
     // forçar o companyId do colaborador que está fazendo a requisição
-    createUserDto.companyId = companyIdFromCollab;
+    createUserDto.companyId = companyIdFromCollaborator;
 
     return this.userService.registerUser(createUserDto);
   }
@@ -67,5 +69,39 @@ export class UserController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async deleteUser(@Param('id') id: string) {
     return this.userService.deleteUser(id);
+  }
+
+  @Post(':parentId/children')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
+  async createChild(@IdToken() token: string, @Param('parentId') parentId: string, @Body() createChildDto: CreateChildDto) {
+    if (!token) throw new ForbiddenException('Missing auth token');
+
+    const decoded = await this.firebaseService.verifyIdToken(token);
+    const uid = decoded.uid;
+    const callerRoles = decoded.roles || [];
+
+    // recuperar o usuário pai
+    const parentDoc = this.firestore.collection('users').doc(parentId);
+    const parentSnap = await parentDoc.get();
+
+    if (!parentSnap.exists) throw new BadRequestException(`Parent user with id ${parentId} not found`);
+    const parentData = parentSnap.data() as User;
+
+    // autorização: systemAdmin pode sempre; caso contrário, permitir se for o próprio pai ou colaborador da mesma empresa
+    if (!callerRoles.includes('systemAdmin')) {
+      if (uid !== parentId) {
+        const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
+        if (!collaboratorDoc.exists) throw new ForbiddenException('Collaborator not found');
+        const collabData = collaboratorDoc.data() as any;
+        if (collabData.companyId !== parentData.companyId) throw new ForbiddenException('Not authorized to create child for this user');
+      }
+    }
+
+    // sanitize payload: do not allow overriding companyId or responsibleUserIds
+    delete (createChildDto as any).companyId;
+    delete (createChildDto as any).responsibleUserIds;
+
+    return this.userService.createChild(parentData, createChildDto);
   }
 }

@@ -85,9 +85,5 @@ export class CreateUserDto {
   @IsOptional()
   companyId?: string;
 
-  @ApiPropertyOptional({ description: 'IDs das crianças associadas' })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  childrenIds?: string[];
+  // childrenIds is managed by the server; clients should not set it
 }

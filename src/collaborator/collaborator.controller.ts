@@ -19,8 +19,8 @@ export class CollaboratorController {
   @Put(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
-  async updateCollaborator(@Param('id') id: string, @Body() updateCollaboratorDto: CreateCollaboratorDto) {
-    return this.service.updateCollaborator(id, updateCollaboratorDto);
+  async updateCollaborator(@Param('id') id: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
+    return this.service.updateCollaborator(id, createCollaboratorDto);
   }
 
   @Delete(':id')
