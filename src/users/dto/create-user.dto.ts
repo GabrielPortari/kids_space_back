@@ -84,6 +84,4 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   companyId?: string;
-
-  // childrenIds is managed by the server; clients should not set it
 }

@@ -30,11 +30,47 @@ export class UserService {
 
   async deleteUser(id: string) {
     if (!id) throw new BadRequestException('id is required to delete user');
-    const userDoc = await this.collection.doc(id).get();
+    const userRef = this.collection.doc(id);
+    const userDoc = await userRef.get();
     if (!userDoc.exists) {
       throw new NotFoundException(`User with id ${id} not found`);
     }
-    await this.collection.doc(id).delete();
+
+    const childrenCollection = this.firestore.collection('children');
+    const childrenQuery = childrenCollection.where('responsibleUserIds', 'array-contains', id);
+    const childrenSnapshot = await childrenQuery.get();
+
+    await this.firestore.runTransaction(async transaction => {
+      for (const childDoc of childrenSnapshot.docs) {
+        const childSnap = await transaction.get(childDoc.ref);
+        if (!childSnap.exists) continue;
+        const childData = childSnap.data() as any;
+        const childId = childSnap.id;
+        const responsibleUserIds: string[] = Array.isArray(childData.responsibleUserIds)
+          ? childData.responsibleUserIds
+          : [];
+
+        if (responsibleUserIds.length > 1) {
+          transaction.update(childDoc.ref, {
+            responsibleUserIds: admin.firestore.FieldValue.arrayRemove(id),
+          });
+        } else {
+          // If this user is the only responsible, delete the child
+          transaction.delete(childDoc.ref);
+          // Also remove the child id from any users' childrenIds arrays
+          const usersWithChildQuery = this.collection.where('childrenIds', 'array-contains', childId);
+          const usersWithChildSnap = await transaction.get(usersWithChildQuery);
+          for (const uDoc of usersWithChildSnap.docs) {
+            transaction.update(uDoc.ref, {
+              childrenIds: admin.firestore.FieldValue.arrayRemove(childId),
+            });
+          }
+        }
+      }
+      // finally delete the user
+      transaction.delete(userRef);
+    });
+
     return { message: `User with id ${id} deleted successfully` };
   }
 
