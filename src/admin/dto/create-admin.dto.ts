@@ -8,7 +8,7 @@ export class CreateAdminDto {
   @IsIn(['systemAdmin'])
   userType: UserType;
 
-  @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['collaborator'] })
+  @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['systemAdmin'] })
   @IsOptional()
   @IsArray()
   @IsString({ each: true })

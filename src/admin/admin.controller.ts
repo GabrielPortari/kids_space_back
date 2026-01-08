@@ -1,4 +1,4 @@
-import { Body, Controller, Post, UseGuards } from '@nestjs/common';
+import { Body, Controller, Post, Delete, Param, UseGuards } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { ApiBearerAuth } from '@nestjs/swagger';
@@ -10,9 +10,15 @@ export class AdminController {
 
   @Post('register')
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin'))
+  @UseGuards(RolesGuard('master'))
   async registerSystemAdmin(@Body() createAdminDto: CreateAdminDto) {
     return this.service.registerSystemAdmin(createAdminDto);
   }
-  
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('master'))
+  async deleteSystemAdmin(@Param('id') id: string) {
+    return this.service.deleteSystemAdmin(id);
+  }
 }

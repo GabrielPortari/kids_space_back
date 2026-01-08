@@ -15,6 +15,7 @@ import { UserModule } from './users/user.module';
     ConfigModule.forRoot({ isGlobal: true }),
     FirebaseModule.forRoot(),
     AuthModule,
+    AdminModule,
     CollaboratorModule,
     UserModule,
     RolesModule,

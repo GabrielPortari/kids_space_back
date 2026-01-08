@@ -24,5 +24,11 @@ export class RolesController {
     systemAdmin(){
         return 'If you can see this, you are a system admin';
     }
-    
+
+    @Get('master')
+    @UseGuards(RolesGuard('master'))
+    @ApiBearerAuth()
+    master(){
+        return 'If you can see this, you are a master';
+    }
 }

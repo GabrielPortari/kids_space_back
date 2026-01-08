@@ -42,5 +42,15 @@ export class AdminService {
         return adminFS;
     }
 
+    async deleteSystemAdmin(id: string) {
+        if(!id) throw new BadRequestException('id is required to delete admin');
+        const adminDoc = await this.adminCollection.doc(id).get();
+        if (!adminDoc.exists) {
+            throw new NotFoundException(`Admin with id ${id} not found`);
+        }
+        await this.firebaseService.deleteUser(id);
+        await this.adminCollection.doc(id).delete();
+        return { message: `Admin with id ${id} deleted successfully` };
+    }
     
 }

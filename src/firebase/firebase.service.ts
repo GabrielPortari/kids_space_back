@@ -17,6 +17,10 @@ export class FirebaseService {
         return await firebaseAdmin.auth().createUser(props).catch(this.handleFirebaseAuthError) as UserRecord;
     }
 
+    async deleteUser(uid: string): Promise<void>{
+        return await firebaseAdmin.auth().deleteUser(uid).catch(this.handleFirebaseAuthError);
+    }
+
     async verifyIdToken(idToken: string, checkRevoked = false): Promise<DecodedIdToken>{
         return await firebaseAdmin.auth().verifyIdToken(idToken, checkRevoked).catch(this.handleFirebaseAuthError) as DecodedIdToken;
     }
