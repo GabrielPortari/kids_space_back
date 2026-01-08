@@ -17,6 +17,11 @@ export class CreateCollaboratorDto {
   @IsIn(['collaborator', 'companyAdmin'])
   userType?: UserType;
 
+  @ApiPropertyOptional({ description: 'Status da empresa', enum: ['active', 'inactive'], default: 'active' })
+  @IsOptional()
+  @IsIn(['active', 'inactive'])
+  status?: 'active' | 'inactive';
+  
   @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['collaborator'] })
   @IsOptional()
   @IsArray()

@@ -8,6 +8,11 @@ export class CreateAdminDto {
   @IsIn(['systemAdmin'])
   userType: UserType;
 
+  @ApiPropertyOptional({ description: 'Status do admin', enum: ['active', 'inactive'], default: 'active' })
+  @IsOptional()
+  @IsIn(['active', 'inactive'])
+  status?: 'active' | 'inactive';
+
   @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['systemAdmin'] })
   @IsOptional()
   @IsArray()

@@ -30,11 +30,12 @@ export class AdminService {
 
         const adminFS = {
             id: adminAuth.uid,
-            userType: createAdminDto.userType ?? 'systemAdmin',
-            phone: createAdminDto.phone ?? '',
+            userType: createAdminDto.userType,
+            status: createAdminDto.status,
+            phone: createAdminDto.phone,
             email: createAdminDto.email,
-            name: createAdminDto.name ?? '',
-            roles: createAdminDto.roles ?? [],
+            name: createAdminDto.name,
+            roles: createAdminDto.roles,
         };
 
         const data = BaseModel.toFirestore(adminFS);
