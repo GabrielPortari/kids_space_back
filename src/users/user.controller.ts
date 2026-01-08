@@ -60,7 +60,7 @@ export class UserController {
   @Put(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
-  async updateUser(@Param('id') id: string, @Body() updateUserDto: UpdateUserDto) {
+  async updateUser(@Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
     return this.userService.updateUser(id, updateUserDto);
   }
 
