@@ -14,45 +14,6 @@ export class CollaboratorService {
     this.collaboratorCollection = this.firestore.collection('collaborators');
   }
 
-  async createCollaborator(createCollaborator: CreateCollaboratorDto) {
-    const collaboratorAuth = await this.firebaseService.createUser({
-      displayName: createCollaborator.name ?? '',
-      email: createCollaborator.email,
-      password: createCollaborator.password,
-    });
-
-    if (createCollaborator.roles?.length) {
-      await this.firebaseService.setCustomUserClaims(collaboratorAuth.uid, {
-        roles: createCollaborator.roles
-      });
-    }
-
-    const collaboratorFS = new Collaborator({
-      id: collaboratorAuth.uid,
-      companyId: createCollaborator.companyId,
-      email: createCollaborator.email,
-      name: createCollaborator.name ?? '',
-      userType: createCollaborator.userType ?? 'collaborator',
-      roles: createCollaborator.roles ?? [],
-      photoUrl: createCollaborator.photoUrl ?? '',
-      phone: createCollaborator.phone ?? '',
-      birthDate: createCollaborator.birthDate ?? '',
-      document: createCollaborator.document ?? '',
-      address: createCollaborator.address ?? '',
-      addressNumber: createCollaborator.addressNumber ?? '',
-      addressComplement: createCollaborator.addressComplement ?? '',
-      neighborhood: createCollaborator.neighborhood ?? '',
-      city: createCollaborator.city ?? '',
-      state: createCollaborator.state ?? '',
-      zipCode: createCollaborator.zipCode ?? '',
-    });
-
-    const data = BaseModel.toFirestore(collaboratorFS);
-    await this.collaboratorCollection.doc(collaboratorAuth.uid).set(data);
-
-    return collaboratorFS;
-  }
-
   async getCollaboratorById(id: string) {
     if (!id) throw new BadRequestException('id is required to get collaborator');
     const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
@@ -64,15 +25,23 @@ export class CollaboratorService {
 
   async updateCollaborator(id: string, updateCollaboratorDto: UpdateCollaboratorDto) {
     if (!id) throw new BadRequestException('id is required to update collaborator');
-    const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
+    const collaboratorDocRef = this.collaboratorCollection.doc(id);
+    const collaboratorDoc = await collaboratorDocRef.get();
     if (!collaboratorDoc.exists) {
       throw new NotFoundException(`Collaborator with id ${id} not found`);
+    }
+    const current = collaboratorDoc.data();
+    // Prevent changing companyId
+    if ((updateCollaboratorDto as any).companyId && (updateCollaboratorDto as any).companyId !== current?.companyId) {
+      throw new BadRequestException('companyId cannot be changed');
     }
     const updatedData = {
       ...updateCollaboratorDto,
     };
-    await this.collaboratorCollection.doc(id).update(updatedData);
-    const updatedCollaboratorDoc = await this.collaboratorCollection.doc(id).get();
+    // Ensure companyId is not written/overwritten
+    delete (updatedData as any).companyId;
+    await collaboratorDocRef.update(updatedData);
+    const updatedCollaboratorDoc = await collaboratorDocRef.get();
     return updatedCollaboratorDoc.data();
   }
 

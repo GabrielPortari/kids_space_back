@@ -4,13 +4,19 @@ import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Company } from '../models/company.model';
 import { BaseModel } from '../models/base.model';
+import { Collaborator } from 'src/models/collaborator.model';
+import { FirebaseService } from 'src/firebase/firebase.service';
+import { CreateCollaboratorDto } from 'src/collaborator/dto/create-collaborator.dto';
 
 @Injectable()
 export class CompanyService {
   private collection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
+  private collaboratorCollection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
 
-  constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
+  constructor(private readonly firebaseService: FirebaseService,
+    @Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
     this.collection = this.firestore.collection('companies');
+    this.collaboratorCollection = this.firestore.collection('collaborators');
   }
 
   async createCompany(createCompanyDto: CreateCompanyDto): Promise<Company> {
@@ -36,6 +42,46 @@ export class CompanyService {
     await docRef.set(newCompany);
     return newCompany;
   }
+
+    async createCollaborator(companyId: string, createCollaborator: CreateCollaboratorDto) {
+    const collaboratorAuth = await this.firebaseService.createUser({
+      displayName: createCollaborator.name ?? '',
+      email: createCollaborator.email,
+      password: createCollaborator.password,
+    });
+
+    if (createCollaborator.roles?.length) {
+      await this.firebaseService.setCustomUserClaims(collaboratorAuth.uid, {
+        roles: createCollaborator.roles
+      });
+    }
+
+    const collaboratorFS = new Collaborator({
+      id: collaboratorAuth.uid,
+      companyId: companyId,
+      email: createCollaborator.email,
+      name: createCollaborator.name ?? '',
+      userType: createCollaborator.userType ?? 'collaborator',
+      roles: createCollaborator.roles ?? [],
+      photoUrl: createCollaborator.photoUrl ?? '',
+      phone: createCollaborator.phone ?? '',
+      birthDate: createCollaborator.birthDate ?? '',
+      document: createCollaborator.document ?? '',
+      address: createCollaborator.address ?? '',
+      addressNumber: createCollaborator.addressNumber ?? '',
+      addressComplement: createCollaborator.addressComplement ?? '',
+      neighborhood: createCollaborator.neighborhood ?? '',
+      city: createCollaborator.city ?? '',
+      state: createCollaborator.state ?? '',
+      zipCode: createCollaborator.zipCode ?? '',
+    });
+
+    const data = BaseModel.toFirestore(collaboratorFS);
+    await this.collaboratorCollection.doc(collaboratorAuth.uid).set(data);
+
+    return collaboratorFS;
+  }
+  
   async getCompanyById(id: string) {
     if (!id) throw new BadRequestException('id is required to get admin');
     const companyDoc = await this.collection.doc(id).get();

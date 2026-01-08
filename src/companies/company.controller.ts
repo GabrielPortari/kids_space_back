@@ -3,6 +3,7 @@ import { CompanyService } from './company.service';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { ApiBearerAuth } from '@nestjs/swagger';
 import { CreateCompanyDto } from './dto/create-company.dto';
+import { CreateCollaboratorDto } from 'src/collaborator/dto/create-collaborator.dto';
 
 @Controller('company')
 export class CompanyController {
@@ -13,6 +14,13 @@ export class CompanyController {
   @UseGuards(RolesGuard('master', 'systemAdmin'))
   async createCompany(@Body() createCompanyDto: CreateCompanyDto) {
     return this.service.createCompany(createCompanyDto);
+  }
+
+  @Post(':companyId/registerCollaborator')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
+  async registerCollaborator(@Param('companyId') companyId: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
+    return this.service.createCollaborator(companyId, createCollaboratorDto);
   }
 
   @Put(':id')

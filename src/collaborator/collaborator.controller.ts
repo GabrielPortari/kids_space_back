@@ -9,13 +9,6 @@ export class CollaboratorController {
   constructor(private readonly service: CollaboratorService,
   ) {}
 
-  @Post('register')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
-  async registerCollaborator(@Body() createCollaboratorDto: CreateCollaboratorDto) {
-    return this.service.createCollaborator(createCollaboratorDto);
-  }
-
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
