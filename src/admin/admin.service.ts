@@ -42,6 +42,29 @@ export class AdminService {
         return adminFS;
     }
 
+    async getAdminById(id: string) {
+        if(!id) throw new BadRequestException('id is required to get admin');
+        const adminDoc = await this.adminCollection.doc(id).get();
+        if (!adminDoc.exists) {
+            throw new NotFoundException(`Admin with id ${id} not found`);
+        }
+        return adminDoc.data();
+    }
+
+    async updateSystemAdmin(id: string, updateAdminDto: CreateAdminDto) {
+        if(!id) throw new BadRequestException('id is required to update admin');
+        const adminDoc = await this.adminCollection.doc(id).get();
+        if (!adminDoc.exists) {
+            throw new NotFoundException(`Admin with id ${id} not found`);
+        }
+        const updatedData = {
+            ...updateAdminDto,
+        };
+        await this.adminCollection.doc(id).update(updatedData);
+        const updatedAdminDoc = await this.adminCollection.doc(id).get();
+        return updatedAdminDoc.data();
+    }
+
     async deleteSystemAdmin(id: string) {
         if(!id) throw new BadRequestException('id is required to delete admin');
         const adminDoc = await this.adminCollection.doc(id).get();
