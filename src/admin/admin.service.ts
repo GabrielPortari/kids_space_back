@@ -13,7 +13,7 @@ export class AdminService {
     }
 
     async registerSystemAdmin(createAdminDto: CreateAdminDto) {
-        if(!createAdminDto.password) throw new BadRequestException('password is required to create admin');
+        if (!createAdminDto.password) throw new BadRequestException('password is required to create admin');
 
         const adminAuth = await this.firebaseService.createUser({
             displayName: createAdminDto.name ?? '',
@@ -38,12 +38,12 @@ export class AdminService {
 
         const data = BaseModel.toFirestore(adminFS);
         await this.adminCollection.doc(adminAuth.uid).set(data);
-        
+
         return adminFS;
     }
 
     async getAdminById(id: string) {
-        if(!id) throw new BadRequestException('id is required to get admin');
+        if (!id) throw new BadRequestException('id is required to get admin');
         const adminDoc = await this.adminCollection.doc(id).get();
         if (!adminDoc.exists) {
             throw new NotFoundException(`Admin with id ${id} not found`);
@@ -52,7 +52,7 @@ export class AdminService {
     }
 
     async updateSystemAdmin(id: string, updateAdminDto: CreateAdminDto) {
-        if(!id) throw new BadRequestException('id is required to update admin');
+        if (!id) throw new BadRequestException('id is required to update admin');
         const adminDoc = await this.adminCollection.doc(id).get();
         if (!adminDoc.exists) {
             throw new NotFoundException(`Admin with id ${id} not found`);
@@ -66,7 +66,7 @@ export class AdminService {
     }
 
     async deleteSystemAdmin(id: string) {
-        if(!id) throw new BadRequestException('id is required to delete admin');
+        if (!id) throw new BadRequestException('id is required to delete admin');
         const adminDoc = await this.adminCollection.doc(id).get();
         if (!adminDoc.exists) {
             throw new NotFoundException(`Admin with id ${id} not found`);
@@ -75,5 +75,5 @@ export class AdminService {
         await this.adminCollection.doc(id).delete();
         return { message: `Admin with id ${id} deleted successfully` };
     }
-    
+
 }

@@ -15,9 +15,7 @@ export class Company extends BaseModel {
   phone?: string;
   email?: string;
   logoUrl?: string;
-  collaboratorIds?: string[];
-  userIds?: string[];
-  childIds?: string[];
+  status?: 'active' | 'inactive';
 
   constructor(init?: Partial<Company>) {
     super(init);

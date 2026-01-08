@@ -3,7 +3,7 @@ import { BaseModel } from './base.model';
 export type UserType = 'child' | 'user' | 'collaborator' | 'companyAdmin' | 'systemAdmin' | 'master';
 
 export class BaseUser extends BaseModel {
-  userType: UserType;
+  userType?: UserType;
   photoUrl?: string;
   name?: string;
   email?: string;
