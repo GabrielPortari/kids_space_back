@@ -9,6 +9,8 @@ import { CollaboratorModule } from './collaborator/collaborator.module';
 import { RolesModule } from './roles/roles.module';
 import { User } from './models/user.model';
 import { UserModule } from './users/user.module';
+import { CompanyModule } from './companies/company.module';
+import { ChildrenModule } from './children/children.module';
 
 @Module({
   imports: [
@@ -16,8 +18,10 @@ import { UserModule } from './users/user.module';
     FirebaseModule.forRoot(),
     AuthModule,
     AdminModule,
+    CompanyModule,
     CollaboratorModule,
     UserModule,
+    ChildrenModule,
     RolesModule,
   ],
   providers: [AppService],

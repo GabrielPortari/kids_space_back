@@ -3,6 +3,7 @@ import * as admin from 'firebase-admin';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
 import { BaseModel } from 'src/models/base.model';
+import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Injectable()
 export class AdminService {
@@ -51,7 +52,7 @@ export class AdminService {
         return adminDoc.data();
     }
 
-    async updateSystemAdmin(id: string, updateAdminDto: CreateAdminDto) {
+    async updateSystemAdmin(id: string, updateAdminDto: UpdateAdminDto) {
         if (!id) throw new BadRequestException('id is required to update admin');
         const adminDoc = await this.adminCollection.doc(id).get();
         if (!adminDoc.exists) {

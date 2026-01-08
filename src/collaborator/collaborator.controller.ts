@@ -1,29 +1,39 @@
 import { Controller, Post, Body, Param, Put, Delete, Request, UseGuards, Get } from '@nestjs/common';
 import { CollaboratorService } from './collaborator.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
-import { FirebaseService } from 'src/firebase/firebase.service';
 import { ApiBearerAuth } from '@nestjs/swagger';
-import { AuthGuard } from 'src/auth/auth.guard';
-import { IdToken } from 'src/auth/dto/id-token.decorator';
 import { RolesGuard } from 'src/roles/roles.guard';
 
 @Controller('collaborator')
 export class CollaboratorController {
   constructor(private readonly service: CollaboratorService,
-    private readonly firebaseService: FirebaseService
   ) {}
 
   @Post('register')
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin'))
+  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
   async registerCollaborator(@Body() createCollaboratorDto: CreateCollaboratorDto) {
     return this.service.createCollaborator(createCollaboratorDto);
   }
 
-  @Get('profile')
-  @UseGuards(AuthGuard)
+  @Get(':id')
   @ApiBearerAuth()
-  async profile(@IdToken() token: string){
-    return await this.firebaseService.verifyIdToken(token);
+  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
+  async getCollaboratorById(@Param('id') id: string) {
+    return this.service.getCollaboratorById(id);
+  }
+
+  @Put(':id')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
+  async updateCollaborator(@Param('id') id: string, @Body() updateCollaboratorDto: CreateCollaboratorDto) {
+    return this.service.updateCollaborator(id, updateCollaboratorDto);
+  }
+
+  @Delete(':id')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
+  async deleteCollaborator(@Param('id') id: string) {
+    return this.service.deleteCollaborator(id);
   }
 }
