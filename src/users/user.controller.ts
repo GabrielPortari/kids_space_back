@@ -1,8 +1,8 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Inject, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Inject, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { RolesGuard } from 'src/roles/roles.guard';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
 import { FirebaseService } from 'src/firebase/firebase.service';
 import * as admin from 'firebase-admin';
@@ -18,8 +18,12 @@ export class UserController {
   ) {}
 
   @Post('register')
+  @ApiOperation({ summary: 'Registra novo usuário' })
+  @ApiBody({ type: CreateUserDto })
+  @ApiResponse({ status: 201, description: 'Usuário registrado' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
+  @HttpCode(201)
   async registerUser(@IdToken() token: string, @Body() createUserDto: CreateUserDto) {
     if (!token) throw new ForbiddenException('Missing auth token');
 
@@ -51,6 +55,9 @@ export class UserController {
   }
 
   @Get(':id')
+  @ApiOperation({ summary: 'Recupera usuário por id' })
+  @ApiParam({ name: 'id', description: 'Id do usuário' })
+  @ApiResponse({ status: 200, description: 'Usuário retornado' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getUserById(@Param('id') id: string) {
@@ -58,6 +65,10 @@ export class UserController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Atualiza usuário' })
+  @ApiParam({ name: 'id', description: 'Id do usuário' })
+  @ApiBody({ type: UpdateUserDto })
+  @ApiResponse({ status: 200, description: 'Usuário atualizado' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async updateUser(@Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
@@ -65,15 +76,24 @@ export class UserController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Remove usuário' })
+  @ApiParam({ name: 'id', description: 'Id do usuário' })
+  @ApiResponse({ status: 204, description: 'Usuário removido' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
+  @HttpCode(204)
   async deleteUser(@Param('id') id: string) {
     return this.userService.deleteUser(id);
   }
 
   @Post(':parentId/children')
+  @ApiOperation({ summary: 'Cria criança para um usuário (parentId)' })
+  @ApiParam({ name: 'parentId', description: 'Id do usuário pai' })
+  @ApiBody({ type: CreateChildDto })
+  @ApiResponse({ status: 201, description: 'Criança criada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
+  @HttpCode(201)
   async createChild(@IdToken() token: string, @Param('parentId') parentId: string, @Body() createChildDto: CreateChildDto) {
     if (!token) throw new ForbiddenException('Missing auth token');
 

@@ -1,7 +1,7 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, HttpCode } from '@nestjs/common';
 import { ChildrenService } from './children.service';
 import { CreateChildDto } from './dto/create-child.dto';
-import { ApiBearerAuth } from '@nestjs/swagger';
+import { ApiBearerAuth, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { UpdateUserDto } from 'src/users/dto/update-user.dto';
 
@@ -10,6 +10,9 @@ export class ChildrenController {
   constructor(private readonly childrenService: ChildrenService) {}
   
   @Get(':id')
+  @ApiOperation({ summary: 'Recupera uma criança por id' })
+  @ApiParam({ name: 'id', description: 'Id da criança' })
+  @ApiResponse({ status: 200, description: 'Criança retornada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getChildById(@Param('id') id: string) {
@@ -17,6 +20,10 @@ export class ChildrenController {
   }
 
   @Put(':id')
+  @ApiOperation({ summary: 'Atualiza dados da criança' })
+  @ApiParam({ name: 'id', description: 'Id da criança' })
+  @ApiBody({ type: CreateChildDto })
+  @ApiResponse({ status: 200, description: 'Criança atualizada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async updateChild(@Param('id') id: string, @Body() updateChildDto: CreateChildDto) {
@@ -24,8 +31,12 @@ export class ChildrenController {
   }
 
   @Delete(':id')
+  @ApiOperation({ summary: 'Remove uma criança' })
+  @ApiParam({ name: 'id', description: 'Id da criança' })
+  @ApiResponse({ status: 204, description: 'Criança removida' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
+  @HttpCode(204)
   async deleteChild(@Param('id') id: string) {
     return this.childrenService.deleteChild(id);
   }

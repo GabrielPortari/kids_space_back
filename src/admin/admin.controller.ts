@@ -10,7 +10,6 @@ export class AdminController {
   constructor(private readonly service: AdminService) {}
 
   @ApiOperation({ summary: 'Cria um novo administrador' })
-  @ApiParam({ name: 'id', type: Number })
   @ApiBody({ type: CreateAdminDto })
   @ApiResponse({ status: 201, description: 'Administrador criado.' })
   @Post('register')
