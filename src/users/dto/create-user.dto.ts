@@ -10,11 +10,6 @@ import {
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
-  @ApiPropertyOptional({ description: 'Tipo de usuário', example: 'user' })
-  @IsOptional()
-  @IsString()
-  @IsIn(['child', 'user'])
-  userType?: UserType;
 
   @ApiPropertyOptional({ description: 'URL da foto' })
   @IsOptional()

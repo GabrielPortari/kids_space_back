@@ -1,31 +1,32 @@
 import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
 import { AttendanceService } from "./attendance.service";
 import { RolesGuard } from "src/roles/roles.guard";
-import { CreateAttendanceDto } from "./dto/create-attendance.dto";
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
+import { CreateCheckinDto } from "./dto/create-checkin.dto";
+import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 @Controller('attendance')
 export class AttendanceController {
   constructor(private readonly service: AttendanceService) {}
 
   @ApiOperation({ summary: 'Realiza checkin de uma criança' })
-  @ApiBody({ type: CreateAttendanceDto })
-  @ApiResponse({ status: 201, description: 'Checkin in realizado.' })
+  @ApiBody({ type: CreateCheckinDto })
+  @ApiResponse({ status: 201, description: 'Checkin realizado.' })
   @Post('checkin')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckin(@Body() createAttendanceDto: CreateAttendanceDto) {
-    return this.service.doCheckin(createAttendanceDto);
+  async doCheckin(@Body() createCheckinDto: CreateCheckinDto) {
+    return this.service.doCheckin(createCheckinDto);
   }
 
   @ApiOperation({ summary: 'Realiza checkout de uma criança' })
-  @ApiBody({ type: CreateAttendanceDto })
+  @ApiBody({ type: CreateCheckoutDto })
   @ApiResponse({ status: 201, description: 'Checkout realizado.' })
   @Post('checkout')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckout(@Body() createAttendanceDto: CreateAttendanceDto) {
-    return this.service.doCheckout(createAttendanceDto);
+  async doCheckout(@Body() createCheckoutDto: CreateCheckoutDto) {
+    return this.service.doCheckout(createCheckoutDto);
   }
 
   @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
@@ -34,7 +35,7 @@ export class AttendanceController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getAttendance(@Param('id') id: string) {
-    return this.service.getAttendance(id);
+  async getAttendanceById(@Param('id') id: string) {
+    return this.service.getAttendanceById(id);
   }
 }

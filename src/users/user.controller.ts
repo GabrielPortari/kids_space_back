@@ -106,7 +106,7 @@ export class UserController {
     const parentSnap = await parentDoc.get();
 
     if (!parentSnap.exists) throw new BadRequestException(`Parent user with id ${parentId} not found`);
-    const parentData = parentSnap.data() as User;
+    const parentData = { ...(parentSnap.data() as any), id: parentSnap.id } as User;
 
     // autorização: systemAdmin pode sempre; caso contrário, permitir se for o próprio pai ou colaborador da mesma empresa
     if (!callerRoles.includes('systemAdmin')) {

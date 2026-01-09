@@ -1,9 +1,9 @@
 import { Inject, Injectable } from "@nestjs/common";
-import { FirebaseService } from "src/firebase/firebase.service";
 import * as admin from 'firebase-admin';
-import { CreateAttendanceDto } from "./dto/create-attendance.dto";
 import { Attendance } from "src/models/attendance";
 import { BaseModel } from "src/models/base.model";
+import { CreateCheckinDto } from "./dto/create-checkin.dto";
+import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 @Injectable()
 export class AttendanceService {
@@ -12,27 +12,26 @@ export class AttendanceService {
         this.attendanceCollection = this.firestore.collection('attendanceRecords');
     }
 
-    async doCheckin(createAttendanceDto: CreateAttendanceDto) {
-      if (!createAttendanceDto?.childId) throw new Error('childId is required for checkin');
+    async doCheckin(createCheckinDto: CreateCheckinDto) {
+      if (!createCheckinDto?.childId) throw new Error('childId is required for checkin');
 
-      const childId = createAttendanceDto.childId;
+      const childId = createCheckinDto.childId;
       const openQuery = this.attendanceCollection
         .where('childId', '==', childId)
-        .where('status', '==', 'open')
+        .where('attendanceType', '==', 'checkin')
         .limit(1);
 
       const openSnap = await openQuery.get();
       if (!openSnap.empty) throw new Error('There is already an open attendance session for this child');
 
-      const checkInDate = createAttendanceDto.checkInTime ? new Date(createAttendanceDto.checkInTime) : new Date();
+      const checkInDate = new Date();
 
       const attendance = new Attendance({
         attendanceType: 'checkin',
-        status: 'open',
-        notes: createAttendanceDto.notes || undefined,
-        collaboratorCheckedInId: createAttendanceDto.collaboratorCheckedInId || undefined,
-        responsibleId: createAttendanceDto.responsibleId,
-        childId,
+        notes: createCheckinDto.notes,
+        collaboratorCheckedInId: createCheckinDto.collaboratorCheckedInId,
+        responsibleId: createCheckinDto.responsibleId,
+        childId: createCheckinDto.childId,
         checkInTime: checkInDate,
       });
 
@@ -47,13 +46,13 @@ export class AttendanceService {
       return Attendance.fromFirestore(saved);
     }
 
-    async doCheckout(createAttendanceDto: CreateAttendanceDto) {
-      if (!createAttendanceDto?.childId) throw new Error('childId is required for checkout');
+    async doCheckout(createCheckoutDto: CreateCheckoutDto) {
+      if (!createCheckoutDto?.childId) throw new Error('childId is required for checkout');
 
-      const childId = createAttendanceDto.childId;
+      const childId = createCheckoutDto.childId;
       const openQuery = this.attendanceCollection
         .where('childId', '==', childId)
-        .where('status', '==', 'open')
+        .where('attendanceType', '==', 'checkin')
         .orderBy('checkInTime', 'desc')
         .limit(1);
 
@@ -68,26 +67,33 @@ export class AttendanceService {
         if (!snap.exists) throw new Error('Attendance session not found');
         const existing = Attendance.fromFirestore(snap);
 
-        if (existing.status !== 'open') throw new Error('Attendance session is not open');
+        if (existing.attendanceType !== 'checkin') throw new Error('Attendance session is not open');
 
-        const checkInTime = existing.checkInTime ? new Date(existing.checkInTime) : null;
-        const checkOutDate = createAttendanceDto.checkOutTime ? new Date(createAttendanceDto.checkOutTime) : new Date();
+          // existing.checkInTime may be a Firestore Timestamp or a Date/string.
+          let checkInTime: Date | null = null;
+          if (existing.checkInTime) {
+            const v: any = existing.checkInTime;
+            if (typeof v.toDate === 'function') {
+              checkInTime = v.toDate();
+            } else {
+              checkInTime = new Date(v);
+            }
+          }
 
-        const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
+          const checkOutDate = new Date();
+          const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
 
-        const updated = new Attendance({
-          ...existing,
-          attendanceType: 'checkout',
-          checkOutTime: checkOutDate,
-          timeCheckedIn: durationSeconds?.toString(),
-          status: 'closed',
-          // keep notes priority: incoming -> existing
-          responsibleId: existing.responsibleId,
-          notes: createAttendanceDto.notes || existing.notes || undefined,
-          collaboratorCheckedInId: existing.collaboratorCheckedInId || undefined,
-          collaboratorCheckedOutId: createAttendanceDto.collaboratorCheckedOutId || undefined,
-          // add computed duration
-        });
+          const updated = new Attendance({
+            ...existing,
+            attendanceType: 'checkout',
+            checkOutTime: checkOutDate,
+            // store numeric duration (seconds). Previously saved as string and could become NaN when checkInTime was a Timestamp.
+            timeCheckedIn: durationSeconds ? durationSeconds : undefined,
+            // keep notes priority: incoming -> existing
+            responsibleId: existing.responsibleId,
+            notes: existing.notes ? createCheckoutDto.notes?.concat(existing.notes) || existing.notes || undefined : createCheckoutDto.notes || undefined,
+            collaboratorCheckedOutId: createCheckoutDto.collaboratorCheckedOutId || undefined,
+          });
 
         const updateData = BaseModel.toFirestore(updated);
         transaction.update(docRef, updateData);
@@ -97,7 +103,7 @@ export class AttendanceService {
       return Attendance.fromFirestore(saved);
     }
 
-    async getAttendance(id: string) {
+    async getAttendanceById(id: string) {
       const doc = await this.attendanceCollection.doc(id).get();
       if (!doc.exists) return null;
       return Attendance.fromFirestore(doc);

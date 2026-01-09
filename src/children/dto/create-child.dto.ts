@@ -3,10 +3,6 @@ import { IsOptional, IsString, IsEmail, IsDateString, IsArray, IsBoolean } from 
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateChildDto {
-  @ApiPropertyOptional({ description: 'Tipo de usuário', example: 'child' })
-  @IsOptional()
-  @IsString()
-  userType?: UserType;
 
   @ApiPropertyOptional({ description: 'URL da foto' })
   @IsOptional()

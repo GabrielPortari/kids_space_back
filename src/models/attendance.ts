@@ -2,7 +2,6 @@ import { BaseModel } from "./base.model";
 
 export class Attendance extends BaseModel{
     attendanceType?: 'checkin' | 'checkout';
-    status?: 'open' | 'closed';
     notes?: string;
     collaboratorCheckedInId?: string;
     collaboratorCheckedOutId?: string;
@@ -10,7 +9,7 @@ export class Attendance extends BaseModel{
     childId?: string;
     checkInTime?: Date;
     checkOutTime?: Date;
-    timeCheckedIn?: string;
+    timeCheckedIn?: number;
 
   constructor(init?: Partial<Attendance>) {
     super(init);

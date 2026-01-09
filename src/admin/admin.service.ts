@@ -59,10 +59,30 @@ export class AdminService {
         if (!adminDoc.exists) {
             throw new NotFoundException(`Admin with id ${id} not found`);
         }
-        const updatedData = {
-            ...updateAdminDto,
-        };
-        await this.adminCollection.doc(id).update(updatedData);
+
+        // Prepare update for Firebase Auth (do not save password to Firestore)
+        const authUpdate: any = {};
+        if (updateAdminDto.password) authUpdate.password = updateAdminDto.password;
+        if (updateAdminDto.email) authUpdate.email = updateAdminDto.email;
+        if (updateAdminDto.name) authUpdate.displayName = updateAdminDto.name;
+        if (updateAdminDto.phone) authUpdate.phoneNumber = updateAdminDto.phone;
+
+        if (Object.keys(authUpdate).length) {
+            await admin.auth().updateUser(id, authUpdate).catch((err) => {
+                throw new BadRequestException(err.message || 'Failed to update auth user');
+            });
+        }
+
+        // Update custom claims if roles provided
+        if (updateAdminDto.roles) {
+            await this.firebaseService.setCustomUserClaims(id, { roles: updateAdminDto.roles });
+        }
+
+        // Prepare Firestore update, removing sensitive fields
+        const firestoreUpdate: any = { ...updateAdminDto };
+        if (firestoreUpdate.password) delete firestoreUpdate.password;
+
+        await this.adminCollection.doc(id).update(firestoreUpdate);
         const updatedAdminDoc = await this.adminCollection.doc(id).get();
         return updatedAdminDoc.data();
     }

@@ -19,6 +19,7 @@ export class UserService {
     const ref = this.collection.doc();
     const user = new User({
       id: ref.id,
+      userType: 'user',
       ...createUserDto,
     });
 
@@ -105,22 +106,22 @@ export class UserService {
       id: ref.id,
       responsibleUserIds: [parent.id],
       companyId: parent.companyId,
-      status: false,
-      userType: createChildDto.userType,
+      checkedIn: false,
+      userType: 'child',
       photoUrl: createChildDto.photoUrl,
       name: createChildDto.name,
       email: createChildDto.email,
       phone: createChildDto.phone,
       birthDate: createChildDto.birthDate,
       document: createChildDto.document,
-      // herda do responsável
-      address: parent.address,
-      addressNumber: parent.addressNumber,
-      addressComplement: parent.addressComplement,
-      neighborhood: parent.neighborhood,
-      city: parent.city,
-      state: parent.state,
-      zipCode: parent.zipCode,
+      // herda do responsável se não informado
+      address: createChildDto.address ? createChildDto.address : parent.address,
+      addressNumber: createChildDto.addressNumber ? createChildDto.addressNumber : parent.addressNumber,
+      addressComplement: createChildDto.addressComplement ? createChildDto.addressComplement : parent.addressComplement,
+      neighborhood: createChildDto.neighborhood ? createChildDto.neighborhood : parent.neighborhood,
+      city: createChildDto.city ? createChildDto.city : parent.city,
+      state: createChildDto.state ? createChildDto.state : parent.state,
+      zipCode: createChildDto.zipCode ? createChildDto.zipCode : parent.zipCode,
     });
 
     const data = BaseModel.toFirestore(child);

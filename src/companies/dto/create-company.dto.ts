@@ -10,11 +10,6 @@ import {
 } from 'class-validator';
 
 export class CreateCompanyDto {
-  @ApiPropertyOptional({ description: 'Company id (use for updates)' })
-  @IsOptional()
-  @IsString()
-  id?: string;
-
   @ApiPropertyOptional({ description: 'Nome fantasia' })
   @IsOptional()
   @IsString()
