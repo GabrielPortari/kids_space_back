@@ -11,6 +11,8 @@ import { User } from './models/user.model';
 import { UserModule } from './users/user.module';
 import { CompanyModule } from './companies/company.module';
 import { ChildrenModule } from './children/children.module';
+import { CheckinModule } from './checkin/checkin.module';
+import { CheckoutModule } from './checkout/checkout.module';
 
 @Module({
   imports: [
@@ -23,6 +25,8 @@ import { ChildrenModule } from './children/children.module';
     UserModule,
     ChildrenModule,
     RolesModule,
+    CheckinModule,
+    CheckoutModule,
   ],
   providers: [AppService],
 })
