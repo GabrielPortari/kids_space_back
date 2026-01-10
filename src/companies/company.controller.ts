@@ -53,6 +53,13 @@ export class CompanyController {
     return this.service.getCompanyById(id);
   }
 
+  @Get()
+  @ApiOperation({ summary: 'Recupera todas as empresas' })
+  @ApiResponse({ status: 200, description: 'Empresas retornadas' })
+  async getAllCompany() {
+    return this.service.getAllCompanies();
+  }
+
   @Delete(':id')
   @ApiOperation({ summary: 'Remove empresa' })
   @ApiParam({ name: 'id', description: 'Id da empresa' })

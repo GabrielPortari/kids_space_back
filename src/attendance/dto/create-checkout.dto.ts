@@ -8,7 +8,6 @@ export class CreateCheckoutDto {
     notes?: string;
     
     @ApiPropertyOptional({ type: String, description: 'Collaborator id who checked out' })
-    @IsOptional()
     @IsString()
     collaboratorCheckedOutId?: string;
 

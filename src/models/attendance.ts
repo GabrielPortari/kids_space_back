@@ -3,6 +3,7 @@ import { BaseModel } from "./base.model";
 export class Attendance extends BaseModel{
     attendanceType?: 'checkin' | 'checkout';
     notes?: string;
+    companyId?: string;
     collaboratorCheckedInId?: string;
     collaboratorCheckedOutId?: string;
     responsibleId?: string;

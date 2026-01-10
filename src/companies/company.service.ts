@@ -43,7 +43,7 @@ export class CompanyService {
     return newCompany;
   }
 
-    async createCollaborator(companyId: string, createCollaborator: CreateCollaboratorDto) {
+  async createCollaborator(companyId: string, createCollaborator: CreateCollaboratorDto) {
     const collaboratorAuth = await this.firebaseService.createUser({
       displayName: createCollaborator.name ?? '',
       email: createCollaborator.email,
@@ -92,6 +92,15 @@ export class CompanyService {
     return companyDoc.data();
   }
 
+  async getAllCompanies() {
+    const snapshot = await this.collection.get();
+    const companies: Company[] = [];
+    snapshot.forEach(doc => {
+      companies.push(doc.data() as Company);
+    });
+    return companies;
+  }
+  
   async updateCompany(id: string, updateCompanyDto: UpdateCompanyDto) {
     if (!id) throw new BadRequestException('id is required to update company');
     const companyDoc = await this.collection.doc(id).get();

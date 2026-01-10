@@ -7,8 +7,11 @@ export class CreateCheckinDto {
     @IsString()
     notes?: string;
 
+    @ApiPropertyOptional({ type: String, description: 'Company id' })
+    @IsString()
+    companyId?: string;
+
     @ApiPropertyOptional({ type: String, description: 'Collaborator id who checked in' })
-    @IsOptional()
     @IsString()
     collaboratorCheckedInId?: string;
 
