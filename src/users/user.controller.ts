@@ -47,10 +47,8 @@ export class UserController {
     const companyIdFromCollaborator = collabData.companyId;
 
     if (!companyIdFromCollaborator) throw new ForbiddenException('Collaborator has no company assigned');
-
-    // forçar o companyId do colaborador que está fazendo a requisição
     createUserDto.companyId = companyIdFromCollaborator;
-
+    
     return this.userService.registerUser(createUserDto);
   }
 
@@ -62,6 +60,17 @@ export class UserController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getUserById(@Param('id') id: string) {
     return this.userService.getUserById(id);
+  }
+
+  @Get('/company/:companyId')
+  @ApiOperation({ summary: 'Recupera todos os usuarios de uma empresa' })
+  @ApiResponse({ status: 200, description: 'Usuários retornados' })
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getAllUsersFromCompany(@IdToken() token: string, @Param('companyId') companyId?: string) {
+    if (!token) throw new ForbiddenException('Missing auth token');
+
+    return this.userService.getAllUsersFromCompany(companyId);
   }
 
   @Put(':id')

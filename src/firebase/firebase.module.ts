@@ -2,7 +2,6 @@ import { DynamicModule, Global, Inject, Module } from '@nestjs/common';
 import { FirebaseConfigService } from './firebase-config-service';
 import { ConfigService } from '@nestjs/config';
 import * as firebaseAdmin from 'firebase-admin';
-import * as fs from 'fs';
 import { FirebaseService } from './firebase.service';
 
 @Global()

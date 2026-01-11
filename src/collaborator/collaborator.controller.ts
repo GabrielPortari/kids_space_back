@@ -14,7 +14,7 @@ export class CollaboratorController {
   @ApiParam({ name: 'id', description: 'Id do colaborador' })
   @ApiResponse({ status: 200, description: 'Colaborador retornado' })
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
+  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin', 'collaborator'))
   async getCollaboratorById(@Param('id') id: string) {
     return this.service.getCollaboratorById(id);
   }

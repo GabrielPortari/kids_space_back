@@ -98,6 +98,22 @@ export class UserService {
     return userDoc.data();
   }
 
+  async getAllUsersFromCompany(companyId?: string) {
+    let snapshot: admin.firestore.QuerySnapshot<admin.firestore.DocumentData>;
+    if (companyId) {
+      const q = this.collection.where('companyId', '==', companyId);
+      snapshot = await q.get();
+    } else {
+      snapshot = await this.collection.get();
+    }
+
+    const users: any[] = [];
+    snapshot.forEach(doc => {
+      users.push({ ...(doc.data() as any), id: doc.id });
+    });
+    return users;
+  }
+  
   async createChild(parent: User, createChildDto: CreateChildDto) {
     if (!parent.id) throw new BadRequestException('parentId is required to create child');
     const childrenCollection = this.firestore.collection('children');

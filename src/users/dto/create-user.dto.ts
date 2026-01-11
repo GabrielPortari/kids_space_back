@@ -1,12 +1,10 @@
-import { UserType } from '../../models/base-user.model';
 import {
   IsOptional,
   IsString,
   IsDateString,
   IsEmail,
-  IsArray,
-  IsIn,
 } from 'class-validator';
+import { Transform } from 'class-transformer';
 import { ApiPropertyOptional } from '@nestjs/swagger';
 
 export class CreateUserDto {
@@ -17,7 +15,6 @@ export class CreateUserDto {
   photoUrl?: string;
 
   @ApiPropertyOptional({ description: 'Nome completo' })
-  @IsOptional()
   @IsString()
   name?: string;
 
@@ -31,6 +28,7 @@ export class CreateUserDto {
   phone?: string;
 
   @ApiPropertyOptional({ description: 'Data de nascimento', format: 'date' })
+  @Transform(({ value }) => (value === '' ? undefined : value))
   @IsOptional()
   @IsDateString()
   birthDate?: string;
