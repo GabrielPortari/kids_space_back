@@ -5,10 +5,27 @@ import { CreateChildDto } from './dto/create-child.dto';
 @Injectable()
 export class ChildrenService {
 
+
   private collection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
 
   constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
     this.collection = this.firestore.collection('children');
+  }
+
+  async getChildByCompanyId(companyId?: string) {
+    let snapshot: admin.firestore.QuerySnapshot<admin.firestore.DocumentData>;
+    if (companyId) {
+      const q = this.collection.where('companyId', '==', companyId);
+      snapshot = await q.get();
+    } else {
+      snapshot = await this.collection.get();
+    }
+
+    const children: any[] = [];
+    snapshot.forEach(doc => {
+      children.push({ ...(doc.data() as any), id: doc.id });
+    });
+    return children;
   }
 
   async deleteChild(id: string) {

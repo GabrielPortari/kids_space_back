@@ -64,6 +64,7 @@ export class UserController {
 
   @Get('/company/:companyId')
   @ApiOperation({ summary: 'Recupera todos os usuarios de uma empresa' })
+  @ApiParam({ name: 'companyId', description: 'Id da empresa' })
   @ApiResponse({ status: 200, description: 'Usuários retornados' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
