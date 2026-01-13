@@ -1,4 +1,4 @@
-import { Inject, Injectable } from "@nestjs/common";
+import { Inject, Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
 import * as admin from 'firebase-admin';
 import { Attendance } from "src/models/attendance";
 import { BaseModel } from "src/models/base.model";
@@ -14,7 +14,7 @@ export class AttendanceService {
     }
 
     async doCheckin(createCheckinDto: CreateCheckinDto) {
-      if (!createCheckinDto?.childId) throw new Error('childId is required for checkin');
+      if (!createCheckinDto?.childId) throw new BadRequestException('childId is required for checkin');
 
       const childId = createCheckinDto.childId;
       const openQuery = this.attendanceCollection
@@ -23,13 +23,14 @@ export class AttendanceService {
         .limit(1);
 
       const openSnap = await openQuery.get();
-      if (!openSnap.empty) throw new Error('There is already an open attendance session for this child');
+      if (!openSnap.empty) throw new BadRequestException('There is already an open attendance session for this child');
 
       const checkInDate = new Date();
 
       const attendance = new Attendance({
         attendanceType: 'checkin',
         notes: createCheckinDto.notes,
+        companyId: createCheckinDto.companyId,
         collaboratorCheckedInId: createCheckinDto.collaboratorCheckedInId,
         responsibleId: createCheckinDto.responsibleId,
         childId: createCheckinDto.childId,
@@ -48,7 +49,7 @@ export class AttendanceService {
     }
 
     async doCheckout(createCheckoutDto: CreateCheckoutDto) {
-      if (!createCheckoutDto?.childId) throw new Error('childId is required for checkout');
+      if (!createCheckoutDto?.childId) throw new BadRequestException('childId is required for checkout');
 
       const childId = createCheckoutDto.childId;
       const openQuery = this.attendanceCollection
@@ -58,17 +59,17 @@ export class AttendanceService {
         .limit(1);
 
       const openSnap = await openQuery.get();
-      if (openSnap.empty) throw new Error('No open attendance session found for this child');
+      if (openSnap.empty) throw new BadRequestException('No open attendance session found for this child');
 
       const doc = openSnap.docs[0];
       const docRef = doc.ref;
 
       await this.firestore.runTransaction(async (transaction) => {
         const snap = await transaction.get(docRef);
-        if (!snap.exists) throw new Error('Attendance session not found');
+        if (!snap.exists) throw new NotFoundException('Attendance session not found');
         const existing = Attendance.fromFirestore(snap);
 
-        if (existing.attendanceType !== 'checkin') throw new Error('Attendance session is not open');
+        if (existing.attendanceType !== 'checkin') throw new BadRequestException('Attendance session is not open');
 
           // existing.checkInTime may be a Firestore Timestamp or a Date/string.
           let checkInTime: Date | null = null;
@@ -104,8 +105,40 @@ export class AttendanceService {
       return Attendance.fromFirestore(saved);
     }
     
-    getAttendanceByCompanyId(companyId: string) {
-      throw new Error("Method not implemented.");
+    async getAttendanceByCompanyId(companyId: string) {
+      if(!companyId) throw new Error('companyId is required');
+      const query = this.attendanceCollection
+        .where('companyId', '==', companyId)
+        .orderBy('checkInTime', 'desc');
+
+      const snap = await query.get();
+      return snap.docs.map(d => Attendance.fromFirestore(d));
+    }
+
+    async getLastCheckin(companyId: string) {
+      if(!companyId) throw new Error('companyId is required');
+      const query = this.attendanceCollection
+        .where('companyId', '==', companyId)
+        .where('attendanceType', '==', 'checkin')
+        .orderBy('checkInTime', 'desc')
+        .limit(1);
+
+      const snap = await query.get();
+      if (snap.empty) return null;
+      return Attendance.fromFirestore(snap.docs[0]);
+    }
+
+    async getLastCheckout(companyId: string) {
+      if(!companyId) throw new Error('companyId is required');
+      const query = this.attendanceCollection
+        .where('companyId', '==', companyId)
+        .where('attendanceType', '==', 'checkout')
+        .orderBy('checkOutTime', 'desc')
+        .limit(1);
+
+      const snap = await query.get();
+      if (snap.empty) return null;
+      return Attendance.fromFirestore(snap.docs[0]);
     }
 
     async getAttendanceById(id: string) {

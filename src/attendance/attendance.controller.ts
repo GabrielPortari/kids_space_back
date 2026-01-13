@@ -43,6 +43,28 @@ export class AttendanceController {
     return this.service.getAttendanceByCompanyId(companyId);
   }
 
+  @ApiOperation({ summary: 'Obtém o último checkin da empresa' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Último checkin obtido com sucesso.' })
+  @Get('company/:companyId/last-checkin')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getLastCheckin(@IdToken() idToken: string, @Param('companyId') companyId: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getLastCheckin(companyId);
+  }
+
+  @ApiOperation({ summary: 'Obtém o último checkout da empresa' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Último checkout obtido com sucesso.' })
+  @Get('company/:companyId/last-checkout')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getLastCheckout(@IdToken() idToken: string, @Param('companyId') companyId: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getLastCheckout(companyId);
+  }
+
   @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
   @ApiParam({ name: 'id', type: String, description: 'ID do registro de atendimento' })
   @ApiResponse({ status: 200, description: 'Registro de atendimento obtido com sucesso.' })
