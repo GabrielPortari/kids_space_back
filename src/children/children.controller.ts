@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, HttpCode, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Body, Param, Put, Delete, UseGuards, HttpCode, ForbiddenException } from '@nestjs/common';
 import { ChildrenService } from './children.service';
 import { CreateChildDto } from './dto/create-child.dto';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';

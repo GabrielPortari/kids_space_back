@@ -7,6 +7,10 @@ export class CreateCheckoutDto {
     @IsString()
     notes?: string;
     
+    @ApiPropertyOptional({ type: String, description: 'Company id' })
+    @IsString()
+    companyId?: string;
+
     @ApiPropertyOptional({ type: String, description: 'Collaborator id who checked out' })
     @IsString()
     collaboratorCheckedOutId?: string;
@@ -20,5 +24,4 @@ export class CreateCheckoutDto {
     @IsString()
     @IsNotEmpty()
     responsibleId: string;
-
 }

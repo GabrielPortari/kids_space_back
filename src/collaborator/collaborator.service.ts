@@ -20,7 +20,8 @@ export class CollaboratorService {
     if (!collaboratorDoc.exists) {
       throw new NotFoundException(`Collaborator with id ${id} not found`);
     }
-    return collaboratorDoc.data();
+    const data = collaboratorDoc.data() as Collaborator | undefined;
+    return { id: collaboratorDoc.id, ...(data || {}) };
   }
 
   async updateCollaborator(id: string, updateCollaboratorDto: UpdateCollaboratorDto) {

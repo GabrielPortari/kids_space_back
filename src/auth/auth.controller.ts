@@ -33,12 +33,11 @@ export class AuthController{
 
     @Post('logout')
     @ApiOperation({ summary: 'Finaliza sessão do usuário (logout)' })
-    @ApiBody({ schema: { type: 'object', properties: { token: { type: 'string' } }, required: ['token'] } })
     @ApiResponse({ status: 204, description: 'Logout realizado com sucesso.' })
     @HttpCode(204)
     @ApiBearerAuth()
     @UseGuards(AuthGuard)
-    async logout(@Body('token') token: string){
+    async logout(@IdToken() token: string){
         return this.authService.logout(token);
     }
 

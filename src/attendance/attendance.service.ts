@@ -7,6 +7,7 @@ import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 @Injectable()
 export class AttendanceService {
+    
     private attendanceCollection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
     constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
         this.attendanceCollection = this.firestore.collection('attendanceRecords');
@@ -101,6 +102,10 @@ export class AttendanceService {
 
       const saved = await docRef.get();
       return Attendance.fromFirestore(saved);
+    }
+    
+    getAttendanceByCompanyId(companyId: string) {
+      throw new Error("Method not implemented.");
     }
 
     async getAttendanceById(id: string) {

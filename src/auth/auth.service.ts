@@ -1,6 +1,6 @@
 import { FirebaseService } from "src/firebase/firebase.service";
 import { LoginDto } from "./dto/login.dto";
-import { Injectable } from '@nestjs/common';
+import { Injectable, BadRequestException } from '@nestjs/common';
 
 @Injectable()
 export class AuthService{
@@ -17,6 +17,7 @@ export class AuthService{
     }
 
     async logout(token: string){
+        if(!token) throw new BadRequestException('id token is required to logout');
         const { uid } =  await this.firebaseService.verifyIdToken(token);
         return await this.firebaseService.revokeRefreshTokens(uid);
     }

@@ -4,6 +4,7 @@ import { RolesGuard } from "src/roles/roles.guard";
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
 import { CreateCheckinDto } from "./dto/create-checkin.dto";
 import { CreateCheckoutDto } from "./dto/create-checkout.dto";
+import { IdToken } from "src/auth/dto/id-token.decorator";
 
 @Controller('attendance')
 export class AttendanceController {
@@ -15,7 +16,8 @@ export class AttendanceController {
   @Post('checkin')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckin(@Body() createCheckinDto: CreateCheckinDto) {
+  async doCheckin(@IdToken() idToken: string, @Body() createCheckinDto: CreateCheckinDto) {
+    if (!idToken) throw new Error('Missing auth token');
     return this.service.doCheckin(createCheckinDto);
   }
 
@@ -25,8 +27,20 @@ export class AttendanceController {
   @Post('checkout')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckout(@Body() createCheckoutDto: CreateCheckoutDto) {
+  async doCheckout(@IdToken() idToken: string, @Body() createCheckoutDto: CreateCheckoutDto) {
+    if (!idToken) throw new Error('Missing auth token');
     return this.service.doCheckout(createCheckoutDto);
+  }
+
+  @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Registro de atendimento obtido com sucesso.' })
+  @Get('company/:companyId')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getAttendanceByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getAttendanceByCompanyId(companyId);
   }
 
   @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
@@ -35,7 +49,8 @@ export class AttendanceController {
   @Get(':id')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getAttendanceById(@Param('id') id: string) {
+  async getAttendanceById(@IdToken() idToken: string, @Param('id') id: string) {
+    if (!idToken) throw new Error('Missing auth token');
     return this.service.getAttendanceById(id);
   }
 }
