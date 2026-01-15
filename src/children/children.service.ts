@@ -36,6 +36,11 @@ export class ChildrenService {
       throw new NotFoundException(`Child with id ${id} not found`);
     }
 
+    const childData = childDoc.data() as any || {};
+    if (childData.checkedIn === true) {
+      throw new BadRequestException('Cannot delete a child while checked in');
+    }
+
     // Archive minimal marker in top-level collection 'children_deleted'
     // and remove child id from users' childrenIds, then delete the child doc.
     await this.firestore.runTransaction(async transaction => {

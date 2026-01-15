@@ -40,7 +40,7 @@ export class AttendanceController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getAttendanceByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
     if (!idToken) throw new Error('Missing auth token');
-    return this.service.getAttendanceByCompanyId(companyId);
+    return this.service.getAttendancesByCompanyId(companyId);
   }
 
   @ApiOperation({ summary: 'Obtém o último checkin da empresa' })
@@ -63,6 +63,28 @@ export class AttendanceController {
   async getLastCheckout(@IdToken() idToken: string, @Param('companyId') companyId: string) {
     if (!idToken) throw new Error('Missing auth token');
     return this.service.getLastCheckout(companyId);
+  }
+
+  @ApiOperation({ summary: 'Obtém os 30 últimos atendimentos da empresa' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Lista dos 30 últimos atendimentos' })
+  @Get('company/:companyId/last-10')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getLast10Attendances(@IdToken() idToken: string, @Param('companyId') companyId: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getLast10Attendances(companyId);
+  }
+
+  @ApiOperation({ summary: 'Obtém checkins ativos (sem checkout) da empresa' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Lista de checkins ativos' })
+  @Get('company/:companyId/active-checkins')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
+  async getActiveCheckinsByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getActiveCheckinsByCompanyId(companyId);
   }
 
   @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })

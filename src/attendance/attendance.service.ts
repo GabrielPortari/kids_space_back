@@ -41,7 +41,16 @@ export class AttendanceService {
       const docRef = this.attendanceCollection.doc();
 
       await this.firestore.runTransaction(async (t) => {
+        const childRef = this.firestore.collection('children').doc(childId);
+        const childSnap = await t.get(childRef);
+
+        // all reads done, now perform writes
         t.set(docRef, data);
+        if (childSnap.exists) {
+          t.update(childRef, { checkedIn: true });
+        } else {
+          t.set(childRef, { checkedIn: true }, { merge: true });
+        }
       });
 
       const saved = await docRef.get();
@@ -65,50 +74,82 @@ export class AttendanceService {
       const docRef = doc.ref;
 
       await this.firestore.runTransaction(async (transaction) => {
+        // Read attendance doc and child doc first
         const snap = await transaction.get(docRef);
+        const childRef = this.firestore.collection('children').doc(childId);
+        const childSnap = await transaction.get(childRef);
+
         if (!snap.exists) throw new NotFoundException('Attendance session not found');
         const existing = Attendance.fromFirestore(snap);
 
         if (existing.attendanceType !== 'checkin') throw new BadRequestException('Attendance session is not open');
 
-          // existing.checkInTime may be a Firestore Timestamp or a Date/string.
-          let checkInTime: Date | null = null;
-          if (existing.checkInTime) {
-            const v: any = existing.checkInTime;
-            if (typeof v.toDate === 'function') {
-              checkInTime = v.toDate();
-            } else {
-              checkInTime = new Date(v);
-            }
+        // existing.checkInTime may be a Firestore Timestamp or a Date/string.
+        let checkInTime: Date | null = null;
+        if (existing.checkInTime) {
+          const v: any = existing.checkInTime;
+          if (typeof v.toDate === 'function') {
+            checkInTime = v.toDate();
+          } else {
+            checkInTime = new Date(v);
           }
+        }
 
-          const checkOutDate = new Date();
-          const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
+        const checkOutDate = new Date();
+        const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
 
-          const updated = new Attendance({
-            ...existing,
-            attendanceType: 'checkout',
-            checkOutTime: checkOutDate,
-            // store numeric duration (seconds). Previously saved as string and could become NaN when checkInTime was a Timestamp.
-            timeCheckedIn: durationSeconds ? durationSeconds : undefined,
-            // keep notes priority: incoming -> existing
-            responsibleId: existing.responsibleId,
-            notes: existing.notes ? createCheckoutDto.notes?.concat(existing.notes) || existing.notes || undefined : createCheckoutDto.notes || undefined,
-            collaboratorCheckedOutId: createCheckoutDto.collaboratorCheckedOutId || undefined,
-          });
+        const updated = new Attendance({
+          ...existing,
+          attendanceType: 'checkout',
+          checkOutTime: checkOutDate,
+          // store numeric duration (seconds). Previously saved as string and could become NaN when checkInTime was a Timestamp.
+          timeCheckedIn: durationSeconds ? durationSeconds : undefined,
+          // keep notes priority: incoming -> existing
+          responsibleId: existing.responsibleId,
+          notes: existing.notes ? createCheckoutDto.notes?.concat(existing.notes) || existing.notes || undefined : createCheckoutDto.notes || undefined,
+          collaboratorCheckedOutId: createCheckoutDto.collaboratorCheckedOutId || undefined,
+        });
 
+        // All reads completed, now perform writes
         const updateData = BaseModel.toFirestore(updated);
         transaction.update(docRef, updateData);
+        if (childSnap.exists) {
+          transaction.update(childRef, { checkedIn: false });
+        } else {
+          transaction.set(childRef, { checkedIn: false }, { merge: true });
+        }
       });
 
       const saved = await docRef.get();
       return Attendance.fromFirestore(saved);
     }
     
-    async getAttendanceByCompanyId(companyId: string) {
+    async getAttendancesByCompanyId(companyId: string) {
       if(!companyId) throw new Error('companyId is required');
       const query = this.attendanceCollection
         .where('companyId', '==', companyId)
+        .orderBy('checkInTime', 'desc');
+
+      const snap = await query.get();
+      return snap.docs.map(d => Attendance.fromFirestore(d));
+    }
+
+    async getLast10Attendances(companyId: string) {
+      if(!companyId) throw new BadRequestException('companyId is required');
+      const query = this.attendanceCollection
+        .where('companyId', '==', companyId)
+        .orderBy('checkInTime', 'desc')
+        .limit(10);
+
+      const snap = await query.get();
+      return snap.docs.map(d => Attendance.fromFirestore(d));
+    }
+
+    async getActiveCheckinsByCompanyId(companyId: string) {
+      if (!companyId) throw new BadRequestException('companyId is required');
+      const query = this.attendanceCollection
+        .where('companyId', '==', companyId)
+        .where('attendanceType', '==', 'checkin')
         .orderBy('checkInTime', 'desc');
 
       const snap = await query.get();

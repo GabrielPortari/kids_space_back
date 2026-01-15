@@ -56,16 +56,26 @@ export class UserService {
             responsibleUserIds: admin.firestore.FieldValue.arrayRemove(id),
           });
         } else {
-          // If this user is the only responsible, delete the child
+          // If this user is the only responsible, ensure child is not checked in
+          const childCheckedIn = !!childData.checkedIn;
+          if (childCheckedIn) {
+            throw new BadRequestException(`Cannot delete child ${childId} while checked in`);
+          }
+
+          // Read users that reference this child before performing writes
+          const usersWithChildQuery = this.collection.where('childrenIds', 'array-contains', childId);
+          const usersWithChildSnap = await transaction.get(usersWithChildQuery);
+
           // Archive child id in 'children_deleted/{childId}' with only deletedDate
           const childrenDeletedRef = this.firestore.collection('children_deleted').doc(childId);
           transaction.set(childrenDeletedRef, {
             deletedDate: admin.firestore.FieldValue.serverTimestamp(),
           });
+
+          // Delete the child document
           transaction.delete(childDoc.ref);
+
           // Also remove the child id from any users' childrenIds arrays
-          const usersWithChildQuery = this.collection.where('childrenIds', 'array-contains', childId);
-          const usersWithChildSnap = await transaction.get(usersWithChildQuery);
           for (const uDoc of usersWithChildSnap.docs) {
             transaction.update(uDoc.ref, {
               childrenIds: admin.firestore.FieldValue.arrayRemove(childId),

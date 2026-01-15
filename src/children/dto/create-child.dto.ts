@@ -78,5 +78,5 @@ export class CreateChildDto {
   @ApiPropertyOptional({ description: 'Status ativo' })
   @IsOptional()
   @IsBoolean()
-  isActive?: boolean;
+  checkedIn?: boolean;
 }
