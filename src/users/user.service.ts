@@ -57,6 +57,11 @@ export class UserService {
           });
         } else {
           // If this user is the only responsible, delete the child
+          // Archive child id in 'children_deleted/{childId}' with only deletedDate
+          const childrenDeletedRef = this.firestore.collection('children_deleted').doc(childId);
+          transaction.set(childrenDeletedRef, {
+            deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+          });
           transaction.delete(childDoc.ref);
           // Also remove the child id from any users' childrenIds arrays
           const usersWithChildQuery = this.collection.where('childrenIds', 'array-contains', childId);
@@ -68,7 +73,11 @@ export class UserService {
           }
         }
       }
-      // finally delete the user
+      // finally archive user marker and delete the user
+      const usersDeletedRef = this.firestore.collection('users_deleted').doc(id);
+      transaction.set(usersDeletedRef, {
+        deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
       transaction.delete(userRef);
     });
 

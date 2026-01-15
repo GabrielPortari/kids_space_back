@@ -36,8 +36,10 @@ export class ChildrenService {
       throw new NotFoundException(`Child with id ${id} not found`);
     }
 
-    // Delete child and remove its id from all users' childrenIds atomically
+    // Archive minimal marker in top-level collection 'children_deleted'
+    // and remove child id from users' childrenIds, then delete the child doc.
     await this.firestore.runTransaction(async transaction => {
+      // Remove child id from users' childrenIds
       const usersWithChildQuery = this.firestore.collection('users').where('childrenIds', 'array-contains', id);
       const usersWithChildSnap = await transaction.get(usersWithChildQuery);
 
@@ -47,10 +49,17 @@ export class ChildrenService {
         });
       }
 
+      // Store only deletedDate in top-level collection 'children_deleted/{id}'
+      const deletedRef = this.firestore.collection('children_deleted').doc(id);
+      transaction.set(deletedRef, {
+        deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
+
+      // Finally delete the original child document
       transaction.delete(childRef);
     });
 
-    return { message: `Child with id ${id} deleted successfully` };
+    return { message: `Child with id ${id} deleted and archived in children_deleted` };
   }
 
   async updateChild(id: string, updateChildDto: CreateChildDto) {

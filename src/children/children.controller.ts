@@ -15,7 +15,8 @@ export class ChildrenController {
   @ApiResponse({ status: 200, description: 'Criança retornada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
-  async getChildById(@Param('id') id: string) {
+  async getChildById(@IdToken() token: string, @Param('id') id: string) {
+    if (!token) throw new ForbiddenException('Missing auth token');
     return this.childrenService.getChildById(id);
   }
 

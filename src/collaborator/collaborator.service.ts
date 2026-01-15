@@ -52,9 +52,20 @@ export class CollaboratorService {
     if (!collaboratorDoc.exists) {
       throw new NotFoundException(`Collaborator with id ${id} not found`);
     }
+    // Archive collaborator marker and delete Firestore doc in a transaction,
+    // then remove the Auth user.
+    await this.firestore.runTransaction(async transaction => {
+      const collRef = this.collaboratorCollection.doc(id);
+      const collDeletedRef = this.firestore.collection('collaborators_deleted').doc(id);
+      transaction.set(collDeletedRef, {
+        deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.delete(collRef);
+    });
+
+    // remove auth user (outside transaction)
     await this.firebaseService.deleteUser(id);
-    await this.collaboratorCollection.doc(id).delete();
-    return { message: `Collaborator with id ${id} deleted successfully` };
+    return { message: `Collaborator with id ${id} deleted and archived in collaborators_deleted` };
   }
 
   async getAllCollaboratorsFromCompany(companyId?: string) {

@@ -93,9 +93,20 @@ export class AdminService {
         if (!adminDoc.exists) {
             throw new NotFoundException(`Admin with id ${id} not found`);
         }
+        // Archive admin marker and delete admin doc in a transaction,
+        // then remove the Auth user.
+        await this.firestore.runTransaction(async transaction => {
+            const adminRef = this.adminCollection.doc(id);
+            const adminDeletedRef = this.firestore.collection('admins_deleted').doc(id);
+            transaction.set(adminDeletedRef, {
+                deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+            });
+            transaction.delete(adminRef);
+        });
+
+        // remove auth user (outside transaction)
         await this.firebaseService.deleteUser(id);
-        await this.adminCollection.doc(id).delete();
-        return { message: `Admin with id ${id} deleted successfully` };
+        return { message: `Admin with id ${id} deleted and archived in admins_deleted` };
     }
 
 }

@@ -121,7 +121,16 @@ export class CompanyService {
     if (!companyDoc.exists) {
       throw new NotFoundException(`Company with id ${id} not found`);
     }
-    await this.collection.doc(id).delete();
-    return { message: `Company with id ${id} deleted successfully` };
+    // Archive company marker and delete company doc in a transaction
+    await this.firestore.runTransaction(async transaction => {
+      const companyRef = this.collection.doc(id);
+      const companyDeletedRef = this.firestore.collection('companies_deleted').doc(id);
+      transaction.set(companyDeletedRef, {
+        deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+      });
+      transaction.delete(companyRef);
+    });
+
+    return { message: `Company with id ${id} deleted and archived in companies_deleted` };
   }
 }
