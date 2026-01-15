@@ -58,7 +58,8 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Usuário retornado' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
-  async getUserById(@Param('id') id: string) {
+  async getUserById(@IdToken() token: string, @Param('id') id: string) {
+    if (!token) throw new ForbiddenException('Missing auth token');
     return this.userService.getUserById(id);
   }
 
@@ -81,7 +82,8 @@ export class UserController {
   @ApiResponse({ status: 200, description: 'Usuário atualizado' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
-  async updateUser(@Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
+  async updateUser(@IdToken() token: string, @Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
+    if (!token) throw new ForbiddenException('Missing auth token');
     return this.userService.updateUser(id, updateUserDto);
   }
 
@@ -92,7 +94,8 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   @HttpCode(204)
-  async deleteUser(@Param('id') id: string) {
+  async deleteUser(@IdToken() token: string, @Param('id') id: string) {
+    if (!token) throw new ForbiddenException('Missing auth token');
     return this.userService.deleteUser(id);
   }
 

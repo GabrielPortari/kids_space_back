@@ -118,6 +118,8 @@ export class UserService {
     if (!parent.id) throw new BadRequestException('parentId is required to create child');
     const childrenCollection = this.firestore.collection('children');
     const ref = childrenCollection.doc();
+    const inheritAddress = (createChildDto as any).inheritAddress === true;
+
     const child = new Child({
       id: ref.id,
       responsibleUserIds: [parent.id],
@@ -130,14 +132,14 @@ export class UserService {
       phone: createChildDto.phone,
       birthDate: createChildDto.birthDate,
       document: createChildDto.document,
-      // herda do responsável se não informado
-      address: createChildDto.address ? createChildDto.address : parent.address,
-      addressNumber: createChildDto.addressNumber ? createChildDto.addressNumber : parent.addressNumber,
-      addressComplement: createChildDto.addressComplement ? createChildDto.addressComplement : parent.addressComplement,
-      neighborhood: createChildDto.neighborhood ? createChildDto.neighborhood : parent.neighborhood,
-      city: createChildDto.city ? createChildDto.city : parent.city,
-      state: createChildDto.state ? createChildDto.state : parent.state,
-      zipCode: createChildDto.zipCode ? createChildDto.zipCode : parent.zipCode,
+      // decide whether to inherit address from parent
+      address: inheritAddress ? parent.address : (createChildDto.address ? createChildDto.address : undefined),
+      addressNumber: inheritAddress ? parent.addressNumber : (createChildDto.addressNumber ? createChildDto.addressNumber : undefined),
+      addressComplement: inheritAddress ? parent.addressComplement : (createChildDto.addressComplement ? createChildDto.addressComplement : undefined),
+      neighborhood: inheritAddress ? parent.neighborhood : (createChildDto.neighborhood ? createChildDto.neighborhood : undefined),
+      city: inheritAddress ? parent.city : (createChildDto.city ? createChildDto.city : undefined),
+      state: inheritAddress ? parent.state : (createChildDto.state ? createChildDto.state : undefined),
+      zipCode: inheritAddress ? parent.zipCode : (createChildDto.zipCode ? createChildDto.zipCode : undefined),
     });
 
     const data = BaseModel.toFirestore(child);

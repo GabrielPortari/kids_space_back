@@ -70,6 +70,11 @@ export class CreateChildDto {
   @IsString()
   zipCode?: string;
   
+  @ApiPropertyOptional({ description: 'Se true, herda endereço do responsável' })
+  @IsOptional()
+  @IsBoolean()
+  inheritAddress?: boolean;
+  
   @ApiPropertyOptional({ description: 'Status ativo' })
   @IsOptional()
   @IsBoolean()

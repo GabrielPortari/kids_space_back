@@ -38,15 +38,16 @@ export class ChildrenService {
 
     // Delete child and remove its id from all users' childrenIds atomically
     await this.firestore.runTransaction(async transaction => {
-      transaction.delete(childRef);
-
       const usersWithChildQuery = this.firestore.collection('users').where('childrenIds', 'array-contains', id);
       const usersWithChildSnap = await transaction.get(usersWithChildQuery);
+
       for (const uDoc of usersWithChildSnap.docs) {
         transaction.update(uDoc.ref, {
           childrenIds: admin.firestore.FieldValue.arrayRemove(id),
         });
       }
+
+      transaction.delete(childRef);
     });
 
     return { message: `Child with id ${id} deleted successfully` };

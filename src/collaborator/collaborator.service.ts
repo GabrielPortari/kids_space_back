@@ -56,4 +56,20 @@ export class CollaboratorService {
     await this.collaboratorCollection.doc(id).delete();
     return { message: `Collaborator with id ${id} deleted successfully` };
   }
+
+  async getAllCollaboratorsFromCompany(companyId?: string) {
+    let snapshot: admin.firestore.QuerySnapshot<admin.firestore.DocumentData>;
+    if (companyId) {
+      const q = this.collaboratorCollection.where('companyId', '==', companyId);
+      snapshot = await q.get();
+    } else {
+      snapshot = await this.collaboratorCollection.get();
+    }
+
+    const collaborators: any[] = [];
+    snapshot.forEach(doc => {
+      collaborators.push({ ...(doc.data() as any), id: doc.id });
+    });
+    return collaborators;
+  }
 }
