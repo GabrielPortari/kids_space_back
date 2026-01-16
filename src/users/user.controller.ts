@@ -99,7 +99,7 @@ export class UserController {
     return this.userService.deleteUser(id);
   }
 
-  @Post(':parentId/children')
+  @Post(':parentId/child')
   @ApiOperation({ summary: 'Cria criança para um usuário (parentId)' })
   @ApiParam({ name: 'parentId', description: 'Id do usuário pai' })
   @ApiBody({ type: CreateChildDto })
