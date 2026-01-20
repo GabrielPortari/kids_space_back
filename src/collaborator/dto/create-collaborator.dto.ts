@@ -93,8 +93,8 @@ export class CreateCollaboratorDto {
   @IsString()
   zipCode?: string;
 
-  @ApiProperty({ description: 'Senha (mínimo 6 caracteres)', minLength: 6 })
+  @ApiPropertyOptional({ description: 'ID da empresa' })
   @IsString()
-  @MinLength(6)
-  password?: string;
+  @IsOptional()
+  companyId?: string;
 }

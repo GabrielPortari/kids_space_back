@@ -17,6 +17,14 @@ export class FirebaseService {
         return await firebaseAdmin.auth().createUser(props).catch(this.handleFirebaseAuthError) as UserRecord;
     }
 
+    async sendPasswordResetEmail(email: string){
+        const url = `https://identitytoolkit.googleapis.com/v1/accounts:sendOobCode?key=${this.apiKey}`;
+        return await this.sendPostRequest(url, {
+            requestType: 'PASSWORD_RESET',
+            email,
+        }).catch(this.handleRestApiError);
+    }
+
     async deleteUser(uid: string): Promise<void>{
         return await firebaseAdmin.auth().deleteUser(uid).catch(this.handleFirebaseAuthError);
     }

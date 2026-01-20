@@ -42,46 +42,6 @@ export class CompanyService {
     await docRef.set(newCompany);
     return newCompany;
   }
-
-  async createCollaborator(companyId: string, createCollaborator: CreateCollaboratorDto) {
-    const collaboratorAuth = await this.firebaseService.createUser({
-      displayName: createCollaborator.name ?? '',
-      email: createCollaborator.email,
-      password: createCollaborator.password,
-    });
-
-    if (createCollaborator.roles?.length) {
-      await this.firebaseService.setCustomUserClaims(collaboratorAuth.uid, {
-        roles: createCollaborator.roles
-      });
-    }
-
-    const collaboratorFS = new Collaborator({
-      id: collaboratorAuth.uid,
-      companyId: companyId,
-      email: createCollaborator.email,
-      name: createCollaborator.name,
-      status: createCollaborator.status,
-      userType: createCollaborator.userType,
-      roles: createCollaborator.roles,
-      photoUrl: createCollaborator.photoUrl,
-      phone: createCollaborator.phone,
-      birthDate: createCollaborator.birthDate,
-      document: createCollaborator.document,
-      address: createCollaborator.address,
-      addressNumber: createCollaborator.addressNumber,
-      addressComplement: createCollaborator.addressComplement,
-      neighborhood: createCollaborator.neighborhood,
-      city: createCollaborator.city,
-      state: createCollaborator.state,
-      zipCode: createCollaborator.zipCode,
-    });
-
-    const data = BaseModel.toFirestore(collaboratorFS);
-    await this.collaboratorCollection.doc(collaboratorAuth.uid).set(data);
-
-    return collaboratorFS;
-  }
   
   async getCompanyById(id: string) {
     if (!id) throw new BadRequestException('id is required to get admin');

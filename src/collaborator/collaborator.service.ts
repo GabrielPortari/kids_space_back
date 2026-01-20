@@ -14,6 +14,61 @@ export class CollaboratorService {
     this.collaboratorCollection = this.firestore.collection('collaborators');
   }
 
+  async registerCollaborator(createCollaboratorDto: CreateCollaboratorDto) {
+    const ref = this.collaboratorCollection.doc();
+    const uid = ref.id;
+
+    // generate a temporary random password (not stored in Firestore)
+    const tempPassword = this.generateRandomPassword(12);
+
+    // create auth user with the generated uid and temporary password
+    await this.firebaseService.createUser({
+      uid,
+      email: createCollaboratorDto.email,
+      password: tempPassword,
+      displayName: createCollaboratorDto.name,
+    })
+
+
+    const collaborator = new Collaborator({
+      id: uid,
+      ...createCollaboratorDto,
+      userType: createCollaboratorDto.userType ?? 'collaborator',
+      roles: createCollaboratorDto.roles ?? ['collaborator'],
+      status: createCollaboratorDto.status ?? 'active',
+    });
+
+    const data = BaseModel.toFirestore(collaborator);
+
+    // write Firestore doc; if it fails, rollback the created Auth user
+    try {
+      await ref.set(data);
+    } catch (err) {
+      await this.firebaseService.deleteUser(uid).catch(() => {});
+      throw err;
+    }
+
+    // Ask Firebase to send the password reset email so the user can set their own password
+    try {
+      await this.firebaseService.sendPasswordResetEmail(createCollaboratorDto.email!);
+    } catch (err) {
+      // log or ignore - user was created; we still return collaborator but surface the error
+      // (optional) consider retrying or notifying admins
+      console.error('Failed to send password reset email:', err.message || err);
+    }
+
+    return collaborator;
+  }
+
+  private generateRandomPassword(length = 12) {
+    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+[]{}|;:,.<>?';
+    let pass = '';
+    for (let i = 0; i < length; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    return pass;
+  }
+  
   async getCollaboratorById(id: string) {
     if (!id) throw new BadRequestException('id is required to get collaborator');
     const collaboratorDoc = await this.collaboratorCollection.doc(id).get();

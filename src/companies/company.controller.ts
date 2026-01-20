@@ -20,18 +20,6 @@ export class CompanyController {
     return this.service.createCompany(createCompanyDto);
   }
 
-  @Post(':companyId/collaborator')
-  @ApiOperation({ summary: 'Registra colaborador para a empresa' })
-  @ApiParam({ name: 'companyId', description: 'Id da empresa' })
-  @ApiBody({ type: CreateCollaboratorDto })
-  @ApiResponse({ status: 201, description: 'Colaborador registrado' })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
-  @HttpCode(201)
-  async registerCollaborator(@Param('companyId') companyId: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
-    return this.service.createCollaborator(companyId, createCollaboratorDto);
-  }
-
   @Put(':id')
   @ApiOperation({ summary: 'Atualiza empresa' })
   @ApiParam({ name: 'id', description: 'Id da empresa' })
