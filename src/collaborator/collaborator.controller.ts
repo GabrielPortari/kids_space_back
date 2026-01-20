@@ -36,7 +36,7 @@ export class CollaboratorController {
     return this.service.getAllCollaboratorsFromCompany(companyId);
   }
 
-@Post('register')
+@ Post('register')
   @ApiOperation({ summary: 'Registra novo colaborador' })
   @ApiBody({ type: CreateCollaboratorDto })
   @ApiResponse({ status: 201, description: 'Colaborador registrado' })
@@ -70,7 +70,7 @@ export class CollaboratorController {
     
     return this.service.registerCollaborator(createCollaboratorDto);
   }
-  
+
   @Put(':id')
   @ApiOperation({ summary: 'Atualiza colaborador' })
   @ApiParam({ name: 'id', description: 'Id do colaborador' })

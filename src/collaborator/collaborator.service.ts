@@ -29,12 +29,22 @@ export class CollaboratorService {
       displayName: createCollaboratorDto.name,
     })
 
+    // ensure roles to set in Auth
+    const rolesToSet = createCollaboratorDto.roles ?? ['collaborator'];
+
+    // set custom claims (roles) in Firebase Auth; rollback user if this fails
+    try {
+      await this.firebaseService.setCustomUserClaims(uid, { roles: rolesToSet });
+    } catch (err) {
+      await this.firebaseService.deleteUser(uid).catch(() => {});
+      throw err;
+    }
 
     const collaborator = new Collaborator({
       id: uid,
       ...createCollaboratorDto,
       userType: createCollaboratorDto.userType ?? 'collaborator',
-      roles: createCollaboratorDto.roles ?? ['collaborator'],
+      roles: rolesToSet,
       status: createCollaboratorDto.status ?? 'active',
     });
 
