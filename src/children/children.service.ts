@@ -44,24 +44,33 @@ export class ChildrenService {
     // Archive minimal marker in top-level collection 'children_deleted'
     // and remove child id from users' childrenIds, then delete the child doc.
     await this.firestore.runTransaction(async transaction => {
-      // Remove child id from users' childrenIds
+      // Read necessary documents before any writes
       const usersWithChildQuery = this.firestore.collection('users').where('childrenIds', 'array-contains', id);
       const usersWithChildSnap = await transaction.get(usersWithChildQuery);
+      const companyRef = childData.companyId ? this.firestore.collection('companies').doc(childData.companyId) : null;
+      const companySnap = companyRef ? await transaction.get(companyRef) : null;
 
+      // Remove child id from users' childrenIds
       for (const uDoc of usersWithChildSnap.docs) {
         transaction.update(uDoc.ref, {
           childrenIds: admin.firestore.FieldValue.arrayRemove(id),
         });
       }
 
-      // Store only deletedDate in top-level collection 'children_deleted/{id}'
+      // Store deleted marker with companyId in top-level collection 'children_deleted/{id}'
       const deletedRef = this.firestore.collection('children_deleted').doc(id);
       transaction.set(deletedRef, {
         deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+        companyId: childData.companyId,
       });
 
       // Finally delete the original child document
       transaction.delete(childRef);
+
+      // Decrement company children counter if companyId present
+      if (childData.companyId && companySnap && companySnap.exists) {
+        transaction.update(companyRef!, { children: admin.firestore.FieldValue.increment(-1) });
+      }
     });
 
     return { message: `Child with id ${id} deleted and archived in children_deleted` };

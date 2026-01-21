@@ -187,4 +187,31 @@ export class AttendanceService {
       if (!doc.exists) return null;
       return Attendance.fromFirestore(doc);
     }
+
+    async getAttendancesBetween(companyId: string, from?: string | Date, to?: string | Date) {
+      if (!companyId) throw new BadRequestException('companyId is required');
+
+      let query: admin.firestore.Query<admin.firestore.DocumentData> = this.attendanceCollection.where('companyId', '==', companyId);
+
+      // convert inputs to Date/Timestamp
+      if (from) {
+        const fromDate = (from instanceof Date) ? from : new Date(String(from));
+        if (isNaN(fromDate.getTime())) throw new BadRequestException('Invalid from date');
+        const fromTs = admin.firestore.Timestamp.fromDate(fromDate);
+        query = query.where('checkInTime', '>=', fromTs);
+      }
+
+      if (to) {
+        const toDate = (to instanceof Date) ? to : new Date(String(to));
+        if (isNaN(toDate.getTime())) throw new BadRequestException('Invalid to date');
+        const toTs = admin.firestore.Timestamp.fromDate(toDate);
+        query = query.where('checkInTime', '<=', toTs);
+      }
+
+      // Firestore requires orderBy on the range field when using range filters
+      query = query.orderBy('checkInTime', 'desc');
+
+      const snap = await query.get();
+      return snap.docs.map(d => Attendance.fromFirestore(d));
+    }
 }

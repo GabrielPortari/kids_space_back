@@ -36,7 +36,7 @@ export class CompanyController {
   @ApiParam({ name: 'id', description: 'Id da empresa' })
   @ApiResponse({ status: 200, description: 'Empresa retornada' })
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin'))
+  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin', 'collaborator'))
   async getCompanyById(@Param('id') id: string) {
     return this.service.getCompanyById(id);
   }

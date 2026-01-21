@@ -107,7 +107,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   @HttpCode(201)
-  async createChild(@IdToken() token: string, @Param('parentId') parentId: string, @Body() createChildDto: CreateChildDto) {
+  async registerChild(@IdToken() token: string, @Param('parentId') parentId: string, @Body() createChildDto: CreateChildDto) {
     if (!token) throw new ForbiddenException('Missing auth token');
 
     const decoded = await this.firebaseService.verifyIdToken(token);
@@ -135,6 +135,6 @@ export class UserController {
     delete (createChildDto as any).companyId;
     delete (createChildDto as any).responsibleUserIds;
 
-    return this.userService.createChild(parentData, createChildDto);
+    return this.userService.registerChild(parentData, createChildDto);
   }
 }

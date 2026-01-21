@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, UseGuards } from "@nestjs/common";
+import { Body, Controller, Get, Param, Post, UseGuards, Query } from "@nestjs/common";
 import { AttendanceService } from "./attendance.service";
 import { RolesGuard } from "src/roles/roles.guard";
 import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
@@ -85,6 +85,17 @@ export class AttendanceController {
   async getActiveCheckinsByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
     if (!idToken) throw new Error('Missing auth token');
     return this.service.getActiveCheckinsByCompanyId(companyId);
+  }
+
+  @ApiOperation({ summary: 'Busca atendimentos entre duas datas' })
+  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
+  @ApiResponse({ status: 200, description: 'Lista de atendimentos no período' })
+  @Get('company/:companyId/between')
+  @ApiBearerAuth()
+  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
+  async getAttendancesBetween(@IdToken() idToken: string, @Param('companyId') companyId: string, @Query('from') from?: string, @Query('to') to?: string) {
+    if (!idToken) throw new Error('Missing auth token');
+    return this.service.getAttendancesBetween(companyId, from, to);
   }
 
   @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })

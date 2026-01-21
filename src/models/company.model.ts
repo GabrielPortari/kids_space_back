@@ -16,6 +16,10 @@ export class Company extends BaseModel {
   email?: string;
   logoUrl?: string;
   status?: 'active' | 'inactive';
+  collaborators?: number;
+  users?: number;
+  children?: number;
+
 
   constructor(init?: Partial<Company>) {
     super(init);

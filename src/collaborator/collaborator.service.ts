@@ -50,9 +50,24 @@ export class CollaboratorService {
 
     const data = BaseModel.toFirestore(collaborator);
 
-    // write Firestore doc; if it fails, rollback the created Auth user
+    // write Firestore doc and increment company collaborators counter atomically; if it fails, rollback the created Auth user
     try {
-      await ref.set(data);
+      const companyId = (collaborator as any).companyId;
+      await this.firestore.runTransaction(async transaction => {
+        // perform reads first
+        let compSnap: admin.firestore.DocumentSnapshot<admin.firestore.DocumentData> | null = null;
+        const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
+        if (companyRef) compSnap = await transaction.get(companyRef);
+        // then perform writes
+        transaction.set(ref, data);
+        if (companyId) {
+          if (compSnap && compSnap.exists) {
+            transaction.update(companyRef!, { collaborators: admin.firestore.FieldValue.increment(1) });
+          } else {
+            transaction.set(companyRef!, { collaborators: 1 }, { merge: true });
+          }
+        }
+      });
     } catch (err) {
       await this.firebaseService.deleteUser(uid).catch(() => {});
       throw err;
@@ -119,13 +134,22 @@ export class CollaboratorService {
     }
     // Archive collaborator marker and delete Firestore doc in a transaction,
     // then remove the Auth user.
+    const companyId = (collaboratorDoc.data() as any)?.companyId;
     await this.firestore.runTransaction(async transaction => {
       const collRef = this.collaboratorCollection.doc(id);
       const collDeletedRef = this.firestore.collection('collaborators_deleted').doc(id);
+      // read company before writes
+      const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
+      const compSnap = companyRef ? await transaction.get(companyRef) : null;
+      // perform writes
       transaction.set(collDeletedRef, {
         deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+        companyId: companyId,
       });
       transaction.delete(collRef);
+      if (companyId && compSnap && compSnap.exists) {
+        transaction.update(companyRef!, { collaborators: admin.firestore.FieldValue.increment(-1) });
+      }
     });
 
     // remove auth user (outside transaction)

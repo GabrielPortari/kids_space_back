@@ -24,7 +24,26 @@ export class UserService {
     });
 
     const data = BaseModel.toFirestore(user);
-    await ref.set(data);
+    // create user and increment company users count atomically
+    try {
+      const companyId = (user as any).companyId;
+      await this.firestore.runTransaction(async transaction => {
+        // read company before writes
+        const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
+        const compSnap = companyRef ? await transaction.get(companyRef) : null;
+        // then write user and update company counter
+        transaction.set(ref, data);
+        if (companyId) {
+          if (compSnap && compSnap.exists) {
+            transaction.update(companyRef!, { users: admin.firestore.FieldValue.increment(1) });
+          } else {
+            transaction.set(companyRef!, { users: 1 }, { merge: true });
+          }
+        }
+      });
+    } catch (err) {
+      throw err;
+    }
 
     return user;
   }
@@ -41,7 +60,11 @@ export class UserService {
     const childrenQuery = childrenCollection.where('responsibleUserIds', 'array-contains', id);
     const childrenSnapshot = await childrenQuery.get();
 
+    const userCompanyId = (userDoc.data() as any)?.companyId;
     await this.firestore.runTransaction(async transaction => {
+      // read user company before any writes in this transaction
+      const userCompanyRef = userCompanyId ? this.firestore.collection('companies').doc(userCompanyId) : null;
+      const userCompanySnap = userCompanyRef ? await transaction.get(userCompanyRef) : null;
       for (const childDoc of childrenSnapshot.docs) {
         const childSnap = await transaction.get(childDoc.ref);
         if (!childSnap.exists) continue;
@@ -65,11 +88,15 @@ export class UserService {
           // Read users that reference this child before performing writes
           const usersWithChildQuery = this.collection.where('childrenIds', 'array-contains', childId);
           const usersWithChildSnap = await transaction.get(usersWithChildQuery);
+          // read child company before writes
+          const childCompanyRef = childData.companyId ? this.firestore.collection('companies').doc(childData.companyId) : null;
+          const childCompanySnap = childCompanyRef ? await transaction.get(childCompanyRef) : null;
 
           // Archive child id in 'children_deleted/{childId}' with only deletedDate
           const childrenDeletedRef = this.firestore.collection('children_deleted').doc(childId);
           transaction.set(childrenDeletedRef, {
             deletedDate: admin.firestore.FieldValue.serverTimestamp(),
+            companyId: childData.companyId,
           });
 
           // Delete the child document
@@ -81,6 +108,10 @@ export class UserService {
               childrenIds: admin.firestore.FieldValue.arrayRemove(childId),
             });
           }
+          // decrement company children counter if present
+          if (childData.companyId && childCompanySnap && childCompanySnap.exists) {
+            transaction.update(childCompanyRef!, { children: admin.firestore.FieldValue.increment(-1) });
+          }
         }
       }
       // finally archive user marker and delete the user
@@ -89,6 +120,10 @@ export class UserService {
         deletedDate: admin.firestore.FieldValue.serverTimestamp(),
       });
       transaction.delete(userRef);
+      // decrement company users counter if present (use snap read earlier)
+      if (userCompanyId && userCompanySnap && userCompanySnap.exists) {
+        transaction.update(userCompanyRef!, { users: admin.firestore.FieldValue.increment(-1) });
+      }
     });
 
     return { message: `User with id ${id} deleted successfully` };
@@ -133,7 +168,7 @@ export class UserService {
     return users;
   }
   
-  async createChild(parent: User, createChildDto: CreateChildDto) {
+  async registerChild(parent: User, createChildDto: CreateChildDto) {
     if (!parent.id) throw new BadRequestException('parentId is required to create child');
     const childrenCollection = this.firestore.collection('children');
     const ref = childrenCollection.doc();
@@ -170,11 +205,24 @@ export class UserService {
     await this.firestore.runTransaction(async tx => {
       const parentSnap = await tx.get(parentRef);
       if (!parentSnap.exists) throw new BadRequestException('Parent user not found');
+      // read company before writes
+      const companyId = (child as any).companyId;
+      const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
+      const compSnap = companyRef ? await tx.get(companyRef) : null;
+      // perform writes
       tx.set(ref, data);
       // add child id to parent's childrenIds atomically
       tx.update(parentRef, {
         childrenIds: admin.firestore.FieldValue.arrayUnion(ref.id),
       });
+      // increment company children counter if companyId present
+      if (companyId) {
+        if (compSnap && compSnap.exists) {
+          tx.update(companyRef!, { children: admin.firestore.FieldValue.increment(1) });
+        } else {
+          tx.set(companyRef!, { children: 1 }, { merge: true });
+        }
+      }
     });
 
     const saved = await ref.get();

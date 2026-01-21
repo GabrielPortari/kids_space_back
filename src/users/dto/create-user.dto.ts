@@ -20,10 +20,10 @@ export class CreateUserDto {
 
   @ApiPropertyOptional({ description: 'E-mail do usuário', format: 'email' })
   @IsEmail()
+  @IsOptional()
   email?: string;
 
   @ApiPropertyOptional({ description: 'Telefone de contato' })
-  @IsOptional()
   @IsString()
   phone?: string;
 
