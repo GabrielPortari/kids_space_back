@@ -12,7 +12,7 @@ export class AdminController {
   @ApiOperation({ summary: 'Cria um novo administrador' })
   @ApiBody({ type: CreateAdminDto })
   @ApiResponse({ status: 201, description: 'Administrador criado.' })
-  @Post('register')
+  @Post()
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master'))
   async registerSystemAdmin(@Body() createAdminDto: CreateAdminDto) {
@@ -31,7 +31,7 @@ export class AdminController {
 
   @ApiOperation({ summary: 'Atualiza um administrador pelo ID' })
   @ApiParam({ name: 'id', type: String })
-  @ApiBody({ type: CreateAdminDto })
+  @ApiBody({ type: UpdateAdminDto })
   @ApiResponse({ status: 200, description: 'Administrador atualizado.' })
   @Put(':id')
   @ApiBearerAuth()

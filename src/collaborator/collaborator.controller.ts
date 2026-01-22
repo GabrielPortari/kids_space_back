@@ -1,4 +1,4 @@
-import { Controller, Post, Body, Param, Put, Delete, Request, UseGuards, Get, HttpCode, Inject, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { Controller, Post, Body, Param, Put, Delete, Request, UseGuards, Get, HttpCode, Inject } from '@nestjs/common';
 import { CollaboratorService } from './collaborator.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
@@ -6,6 +6,7 @@ import { RolesGuard } from 'src/roles/roles.guard';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
 import * as admin from 'firebase-admin';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { AppUnauthorizedException, AppBadRequestException } from '../exceptions';
 
 @Controller('collaborator')
 export class CollaboratorController {
@@ -31,12 +32,10 @@ export class CollaboratorController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin', 'collaborator'))
   async getCollaboratorsByCompanyId(@IdToken() token: string, @Param('companyId') companyId?: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
-
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getAllCollaboratorsFromCompany(companyId);
   }
-
-@ Post('register')
+  @Post()
   @ApiOperation({ summary: 'Registra novo colaborador' })
   @ApiBody({ type: CreateCollaboratorDto })
   @ApiResponse({ status: 201, description: 'Colaborador registrado' })
@@ -44,7 +43,7 @@ export class CollaboratorController {
   @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
   @HttpCode(201)
   async registerCollaborator(@IdToken() token: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
 
     const decoded = await this.firebaseService.verifyIdToken(token);
     const uid = decoded.uid;
@@ -53,19 +52,19 @@ export class CollaboratorController {
     // se o usuário for master/systemAdmin, ele pode criar colaboradores para qualquer empresa, mas deve passar o id da empresa no corpo da requisição
     if (callerRoles.includes('systemAdmin') || callerRoles.includes('master')) {
       if (!createCollaboratorDto.companyId) {
-        throw new BadRequestException('systemAdmin/master must provide companyId in request body');
+        throw new AppBadRequestException('systemAdmin/master must provide companyId in request body');
       }
       return this.service.registerCollaborator(createCollaboratorDto);
     }
 
     // caso contrário, o usuário deve ser companyAdmin e só pode criar usuários para a própria empresa
     const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
-    if (!collaboratorDoc.exists) throw new ForbiddenException('Collaborator not found');
+    if (!collaboratorDoc.exists) throw new AppUnauthorizedException('Collaborator not found');
 
     const collabData = collaboratorDoc.data() as any;
     const companyIdFromCollaborator = collabData.companyId;
 
-    if (!companyIdFromCollaborator) throw new ForbiddenException('Collaborator has no company assigned');
+    if (!companyIdFromCollaborator) throw new AppUnauthorizedException('Collaborator has no company assigned');
     createCollaboratorDto.companyId = companyIdFromCollaborator;
     
     return this.service.registerCollaborator(createCollaboratorDto);

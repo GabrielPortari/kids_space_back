@@ -1,12 +1,13 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { Company } from '../models/company.model';
 import { BaseModel } from '../models/base.model';
 import { Collaborator } from 'src/models/collaborator.model';
-import { FirebaseService } from 'src/firebase/firebase.service';
-import { CreateCollaboratorDto } from 'src/collaborator/dto/create-collaborator.dto';
+import { FirebaseService } from '../firebase/firebase.service';
+import { CreateCollaboratorDto } from '../collaborator/dto/create-collaborator.dto';
+import { AppBadRequestException, AppNotFoundException } from '../exceptions';
 
 @Injectable()
 export class CompanyService {
@@ -44,11 +45,9 @@ export class CompanyService {
   }
   
   async getCompanyById(id: string) {
-    if (!id) throw new BadRequestException('id is required to get admin');
+    if (!id) throw new AppBadRequestException('id is required to get admin');
     const companyDoc = await this.collection.doc(id).get();
-    if (!companyDoc.exists) {
-      throw new NotFoundException(`Company with id ${id} not found`);
-    }
+    if (!companyDoc.exists) throw new AppNotFoundException(`Company with id ${id} not found`);
     return companyDoc.data();
   }
 
@@ -62,11 +61,9 @@ export class CompanyService {
   }
   
   async updateCompany(id: string, updateCompanyDto: UpdateCompanyDto) {
-    if (!id) throw new BadRequestException('id is required to update company');
+    if (!id) throw new AppBadRequestException('id is required to update company');
     const companyDoc = await this.collection.doc(id).get();
-    if (!companyDoc.exists) {
-      throw new NotFoundException(`Company with id ${id} not found`);
-    }
+    if (!companyDoc.exists) throw new AppNotFoundException(`Company with id ${id} not found`);
     const updatedData = {
       ...updateCompanyDto,
     };
@@ -76,11 +73,9 @@ export class CompanyService {
   }
 
   async deleteCompany(id: string) {
-    if (!id) throw new BadRequestException('id is required to delete company');
+    if (!id) throw new AppBadRequestException('id is required to delete company');
     const companyDoc = await this.collection.doc(id).get();
-    if (!companyDoc.exists) {
-      throw new NotFoundException(`Company with id ${id} not found`);
-    }
+    if (!companyDoc.exists) throw new AppNotFoundException(`Company with id ${id} not found`);
     // Archive company marker and delete company doc in a transaction
     await this.firestore.runTransaction(async transaction => {
       const companyRef = this.collection.doc(id);

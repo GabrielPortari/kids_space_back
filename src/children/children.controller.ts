@@ -1,11 +1,12 @@
-import { Controller, Get, Body, Param, Put, Delete, UseGuards, HttpCode, ForbiddenException } from '@nestjs/common';
+import { Controller, Get, Body, Param, Put, Delete, UseGuards, HttpCode } from '@nestjs/common';
 import { ChildrenService } from './children.service';
 import { CreateChildDto } from './dto/create-child.dto';
 import { ApiBearerAuth, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
+import { AppUnauthorizedException } from '../exceptions';
 
-@Controller('child')
+@Controller('children')
 export class ChildrenController {
   constructor(private readonly childrenService: ChildrenService) {}
   
@@ -16,7 +17,7 @@ export class ChildrenController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getChildById(@IdToken() token: string, @Param('id') id: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.childrenService.getChildById(id);
   }
 
@@ -27,7 +28,7 @@ export class ChildrenController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getChildByCompanyId(@IdToken() token: string, @Param('companyId') companyId?: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
 
     return this.childrenService.getChildByCompanyId(companyId);
   }
@@ -40,7 +41,7 @@ export class ChildrenController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async updateChild(@IdToken() token: string, @Param('id') id: string, @Body() updateChildDto: CreateChildDto) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.childrenService.updateChild(id, updateChildDto);
   }
 

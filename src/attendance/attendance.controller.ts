@@ -5,6 +5,7 @@ import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse } from "@ne
 import { CreateCheckinDto } from "./dto/create-checkin.dto";
 import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 import { IdToken } from "src/auth/dto/id-token.decorator";
+import { AppUnauthorizedException } from '../exceptions'; 
 
 @Controller('attendance')
 export class AttendanceController {
@@ -17,7 +18,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async doCheckin(@IdToken() idToken: string, @Body() createCheckinDto: CreateCheckinDto) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.doCheckin(createCheckinDto);
   }
 
@@ -28,7 +29,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async doCheckout(@IdToken() idToken: string, @Body() createCheckoutDto: CreateCheckoutDto) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.doCheckout(createCheckoutDto);
   }
 
@@ -39,7 +40,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getAttendanceByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getAttendancesByCompanyId(companyId);
   }
 
@@ -50,7 +51,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getLastCheckin(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getLastCheckin(companyId);
   }
 
@@ -61,18 +62,18 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getLastCheckout(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getLastCheckout(companyId);
   }
 
-  @ApiOperation({ summary: 'Obtém os 30 últimos atendimentos da empresa' })
+  @ApiOperation({ summary: 'Obtém os 10 últimos atendimentos da empresa' })
   @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
   @ApiResponse({ status: 200, description: 'Lista dos 30 últimos atendimentos' })
   @Get('company/:companyId/last-10')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getLast10Attendances(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getLast10Attendances(companyId);
   }
 
@@ -83,7 +84,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getActiveCheckinsByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getActiveCheckinsByCompanyId(companyId);
   }
 
@@ -94,7 +95,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
   async getAttendancesBetween(@IdToken() idToken: string, @Param('companyId') companyId: string, @Query('from') from?: string, @Query('to') to?: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getAttendancesBetween(companyId, from, to);
   }
 
@@ -105,7 +106,7 @@ export class AttendanceController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getAttendanceById(@IdToken() idToken: string, @Param('id') id: string) {
-    if (!idToken) throw new Error('Missing auth token');
+    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
     return this.service.getAttendanceById(id);
   }
 }

@@ -1,11 +1,12 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import { CreateUserDto } from './dto/create-user.dto';
 import { User } from '../models/user.model';
 import { BaseModel } from '../models/base.model';
 import { UpdateUserDto } from './dto/update-user.dto';
-import { CreateChildDto } from 'src/children/dto/create-child.dto';
-import { Child } from 'src/models/child.model';
+import { CreateChildDto } from '../children/dto/create-child.dto';
+import { Child } from '../models/child.model';
+import { AppBadRequestException, AppNotFoundException } from '../exceptions';
 
 @Injectable()
 export class UserService {
@@ -49,12 +50,10 @@ export class UserService {
   }
 
   async deleteUser(id: string) {
-    if (!id) throw new BadRequestException('id is required to delete user');
+    if (!id) throw new AppBadRequestException('id is required to delete user');
     const userRef = this.collection.doc(id);
     const userDoc = await userRef.get();
-    if (!userDoc.exists) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+    if (!userDoc.exists) throw new AppNotFoundException(`User with id ${id} not found`);
 
     const childrenCollection = this.firestore.collection('children');
     const childrenQuery = childrenCollection.where('responsibleUserIds', 'array-contains', id);
@@ -82,7 +81,7 @@ export class UserService {
           // If this user is the only responsible, ensure child is not checked in
           const childCheckedIn = !!childData.checkedIn;
           if (childCheckedIn) {
-            throw new BadRequestException(`Cannot delete child ${childId} while checked in`);
+            throw new AppBadRequestException(`Cannot delete child ${childId} while checked in`);
           }
 
           // Read users that reference this child before performing writes
@@ -130,11 +129,9 @@ export class UserService {
   }
 
   async updateUser(id: string, updateUserDto: UpdateUserDto) {
-    if (!id) throw new BadRequestException('id is required to update user');
+    if (!id) throw new AppBadRequestException('id is required to update user');
     const userDoc = await this.collection.doc(id).get();
-    if (!userDoc.exists) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+    if (!userDoc.exists) throw new AppNotFoundException(`User with id ${id} not found`);
     const updatedData = {
       ...updateUserDto,
     };
@@ -144,11 +141,9 @@ export class UserService {
   }
 
   async getUserById(id: string) {
-    if (!id) throw new BadRequestException('id is required to get user');
+    if (!id) throw new AppBadRequestException('id is required to get user');
     const userDoc = await this.collection.doc(id).get();
-    if (!userDoc.exists) {
-      throw new NotFoundException(`User with id ${id} not found`);
-    }
+    if (!userDoc.exists) throw new AppNotFoundException(`User with id ${id} not found`);
     return userDoc.data();
   }
 
@@ -169,7 +164,7 @@ export class UserService {
   }
   
   async registerChild(parent: User, createChildDto: CreateChildDto) {
-    if (!parent.id) throw new BadRequestException('parentId is required to create child');
+    if (!parent.id) throw new AppBadRequestException('parentId is required to create child');
     const childrenCollection = this.firestore.collection('children');
     const ref = childrenCollection.doc();
     const inheritAddress = (createChildDto as any).inheritAddress === true;
@@ -204,7 +199,7 @@ export class UserService {
     const parentRef = this.firestore.collection('users').doc(parent.id);
     await this.firestore.runTransaction(async tx => {
       const parentSnap = await tx.get(parentRef);
-      if (!parentSnap.exists) throw new BadRequestException('Parent user not found');
+      if (!parentSnap.exists) throw new AppBadRequestException('Parent user not found');
       // read company before writes
       const companyId = (child as any).companyId;
       const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;

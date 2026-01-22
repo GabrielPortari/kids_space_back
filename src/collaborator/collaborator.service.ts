@@ -1,9 +1,10 @@
-import { BadRequestException, Inject, Injectable, NotFoundException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import * as admin from 'firebase-admin';
 import { Collaborator } from '../models/collaborator.model';
 import { BaseModel } from '../models/base.model';
+import { AppBadRequestException, AppNotFoundException } from '../exceptions';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 
 @Injectable()
@@ -77,9 +78,7 @@ export class CollaboratorService {
     try {
       await this.firebaseService.sendPasswordResetEmail(createCollaboratorDto.email!);
     } catch (err) {
-      // log or ignore - user was created; we still return collaborator but surface the error
-      // (optional) consider retrying or notifying admins
-      console.error('Failed to send password reset email:', err.message || err);
+      // ignore sending email failure; user creation succeeded
     }
 
     return collaborator;
@@ -95,26 +94,22 @@ export class CollaboratorService {
   }
   
   async getCollaboratorById(id: string) {
-    if (!id) throw new BadRequestException('id is required to get collaborator');
+    if (!id) throw new AppBadRequestException('id is required to get collaborator');
     const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
-    if (!collaboratorDoc.exists) {
-      throw new NotFoundException(`Collaborator with id ${id} not found`);
-    }
+    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
     const data = collaboratorDoc.data() as Collaborator | undefined;
     return { id: collaboratorDoc.id, ...(data || {}) };
   }
 
   async updateCollaborator(id: string, updateCollaboratorDto: UpdateCollaboratorDto) {
-    if (!id) throw new BadRequestException('id is required to update collaborator');
+    if (!id) throw new AppBadRequestException('id is required to update collaborator');
     const collaboratorDocRef = this.collaboratorCollection.doc(id);
     const collaboratorDoc = await collaboratorDocRef.get();
-    if (!collaboratorDoc.exists) {
-      throw new NotFoundException(`Collaborator with id ${id} not found`);
-    }
+    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
     const current = collaboratorDoc.data();
     // Prevent changing companyId
     if ((updateCollaboratorDto as any).companyId && (updateCollaboratorDto as any).companyId !== current?.companyId) {
-      throw new BadRequestException('companyId cannot be changed');
+      throw new AppBadRequestException('companyId cannot be changed');
     }
     const updatedData = {
       ...updateCollaboratorDto,
@@ -127,11 +122,9 @@ export class CollaboratorService {
   }
 
   async deleteCollaborator(id: string) {
-    if (!id) throw new BadRequestException('id is required to delete collaborator');
+    if (!id) throw new AppBadRequestException('id is required to delete collaborator');
     const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
-    if (!collaboratorDoc.exists) {
-      throw new NotFoundException(`Collaborator with id ${id} not found`);
-    }
+    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
     // Archive collaborator marker and delete Firestore doc in a transaction,
     // then remove the Auth user.
     const companyId = (collaboratorDoc.data() as any)?.companyId;

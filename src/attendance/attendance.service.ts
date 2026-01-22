@@ -1,7 +1,8 @@
-import { Inject, Injectable, BadRequestException, NotFoundException } from "@nestjs/common";
+import { Inject, Injectable } from "@nestjs/common";
+import { AppBadRequestException, AppNotFoundException } from "../exceptions";
 import * as admin from 'firebase-admin';
-import { Attendance } from "src/models/attendance";
-import { BaseModel } from "src/models/base.model";
+import { Attendance } from "../models/attendance";
+import { BaseModel } from "../models/base.model";
 import { CreateCheckinDto } from "./dto/create-checkin.dto";
 import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
@@ -14,7 +15,7 @@ export class AttendanceService {
     }
 
     async doCheckin(createCheckinDto: CreateCheckinDto) {
-      if (!createCheckinDto?.childId) throw new BadRequestException('childId is required for checkin');
+      if (!createCheckinDto?.childId) throw new AppBadRequestException('childId is required for checkin');
 
       const childId = createCheckinDto.childId;
       const openQuery = this.attendanceCollection
@@ -23,7 +24,7 @@ export class AttendanceService {
         .limit(1);
 
       const openSnap = await openQuery.get();
-      if (!openSnap.empty) throw new BadRequestException('There is already an open attendance session for this child');
+      if (!openSnap.empty) throw new AppBadRequestException('There is already an open attendance session for this child');
 
       const checkInDate = new Date();
 
@@ -40,25 +41,25 @@ export class AttendanceService {
       const data = BaseModel.toFirestore(attendance);
       const docRef = this.attendanceCollection.doc();
 
-      await this.firestore.runTransaction(async (t) => {
+      const saved = await this.firestore.runTransaction(async (t) => {
         const childRef = this.firestore.collection('children').doc(childId);
         const childSnap = await t.get(childRef);
 
-        // all reads done, now perform writes
         t.set(docRef, data);
         if (childSnap.exists) {
           t.update(childRef, { checkedIn: true });
         } else {
           t.set(childRef, { checkedIn: true }, { merge: true });
         }
+
+        return t.get(docRef);
       });
 
-      const saved = await docRef.get();
       return Attendance.fromFirestore(saved);
     }
 
     async doCheckout(createCheckoutDto: CreateCheckoutDto) {
-      if (!createCheckoutDto?.childId) throw new BadRequestException('childId is required for checkout');
+      if (!createCheckoutDto?.childId) throw new AppBadRequestException('childId is required for checkout');
 
       const childId = createCheckoutDto.childId;
       const openQuery = this.attendanceCollection
@@ -68,49 +69,42 @@ export class AttendanceService {
         .limit(1);
 
       const openSnap = await openQuery.get();
-      if (openSnap.empty) throw new BadRequestException('No open attendance session found for this child');
+      if (openSnap.empty) throw new AppBadRequestException('No open attendance session found for this child');
 
       const doc = openSnap.docs[0];
       const docRef = doc.ref;
 
-      await this.firestore.runTransaction(async (transaction) => {
-        // Read attendance doc and child doc first
+      const saved = await this.firestore.runTransaction(async (transaction) => {
         const snap = await transaction.get(docRef);
         const childRef = this.firestore.collection('children').doc(childId);
         const childSnap = await transaction.get(childRef);
 
-        if (!snap.exists) throw new NotFoundException('Attendance session not found');
+        if (!snap.exists) throw new AppNotFoundException('Attendance session not found');
         const existing = Attendance.fromFirestore(snap);
 
-        if (existing.attendanceType !== 'checkin') throw new BadRequestException('Attendance session is not open');
+        if (existing.attendanceType !== 'checkin') throw new AppBadRequestException('Attendance session is not open');
 
-        // existing.checkInTime may be a Firestore Timestamp or a Date/string.
         let checkInTime: Date | null = null;
         if (existing.checkInTime) {
           const v: any = existing.checkInTime;
-          if (typeof v.toDate === 'function') {
-            checkInTime = v.toDate();
-          } else {
-            checkInTime = new Date(v);
-          }
+          checkInTime = typeof v.toDate === 'function' ? v.toDate() : new Date(v);
         }
 
         const checkOutDate = new Date();
         const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
 
+        const mergedNotes = [createCheckoutDto.notes, existing.notes].filter(Boolean).join('\n') || undefined;
+
         const updated = new Attendance({
           ...existing,
           attendanceType: 'checkout',
           checkOutTime: checkOutDate,
-          // store numeric duration (seconds). Previously saved as string and could become NaN when checkInTime was a Timestamp.
-          timeCheckedIn: durationSeconds ? durationSeconds : undefined,
-          // keep notes priority: incoming -> existing
+          timeCheckedIn: durationSeconds ?? undefined,
           responsibleId: existing.responsibleId,
-          notes: existing.notes ? createCheckoutDto.notes?.concat(existing.notes) || existing.notes || undefined : createCheckoutDto.notes || undefined,
+          notes: mergedNotes,
           collaboratorCheckedOutId: createCheckoutDto.collaboratorCheckedOutId || undefined,
         });
 
-        // All reads completed, now perform writes
         const updateData = BaseModel.toFirestore(updated);
         transaction.update(docRef, updateData);
         if (childSnap.exists) {
@@ -118,65 +112,45 @@ export class AttendanceService {
         } else {
           transaction.set(childRef, { checkedIn: false }, { merge: true });
         }
+
+        return transaction.get(docRef);
       });
 
-      const saved = await docRef.get();
       return Attendance.fromFirestore(saved);
     }
     
     async getAttendancesByCompanyId(companyId: string) {
-      if(!companyId) throw new Error('companyId is required');
-      const query = this.attendanceCollection
-        .where('companyId', '==', companyId)
-        .orderBy('checkInTime', 'desc');
-
+      if (!companyId) throw new AppBadRequestException('companyId is required');
+      const query = this.attendanceCollection.where('companyId', '==', companyId).orderBy('checkInTime', 'desc');
       const snap = await query.get();
       return snap.docs.map(d => Attendance.fromFirestore(d));
     }
 
     async getLast10Attendances(companyId: string) {
-      if(!companyId) throw new BadRequestException('companyId is required');
-      const query = this.attendanceCollection
-        .where('companyId', '==', companyId)
-        .orderBy('checkInTime', 'desc')
-        .limit(10);
-
+      if (!companyId) throw new AppBadRequestException('companyId is required');
+      const query = this.attendanceCollection.where('companyId', '==', companyId).orderBy('checkInTime', 'desc').limit(10);
       const snap = await query.get();
       return snap.docs.map(d => Attendance.fromFirestore(d));
     }
 
     async getActiveCheckinsByCompanyId(companyId: string) {
-      if (!companyId) throw new BadRequestException('companyId is required');
-      const query = this.attendanceCollection
-        .where('companyId', '==', companyId)
-        .where('attendanceType', '==', 'checkin')
-        .orderBy('checkInTime', 'desc');
-
+      if (!companyId) throw new AppBadRequestException('companyId is required');
+      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkin').orderBy('checkInTime', 'desc');
       const snap = await query.get();
       return snap.docs.map(d => Attendance.fromFirestore(d));
     }
 
     async getLastCheckin(companyId: string) {
-      if(!companyId) throw new Error('companyId is required');
-      const query = this.attendanceCollection
-        .where('companyId', '==', companyId)
-        .where('attendanceType', '==', 'checkin')
-        .orderBy('checkInTime', 'desc')
-        .limit(1);
-
+      if (!companyId) throw new AppBadRequestException('companyId is required');
+      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkin').orderBy('checkInTime', 'desc').limit(1);
       const snap = await query.get();
       if (snap.empty) return null;
       return Attendance.fromFirestore(snap.docs[0]);
     }
 
     async getLastCheckout(companyId: string) {
-      if(!companyId) throw new Error('companyId is required');
-      const query = this.attendanceCollection
-        .where('companyId', '==', companyId)
-        .where('attendanceType', '==', 'checkout')
-        .orderBy('checkOutTime', 'desc')
-        .limit(1);
-
+      if (!companyId) throw new AppBadRequestException('companyId is required');
+      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkout').orderBy('checkOutTime', 'desc').limit(1);
       const snap = await query.get();
       if (snap.empty) return null;
       return Attendance.fromFirestore(snap.docs[0]);
@@ -189,26 +163,22 @@ export class AttendanceService {
     }
 
     async getAttendancesBetween(companyId: string, from?: string | Date, to?: string | Date) {
-      if (!companyId) throw new BadRequestException('companyId is required');
+      if (!companyId) throw new AppBadRequestException('companyId is required');
 
       let query: admin.firestore.Query<admin.firestore.DocumentData> = this.attendanceCollection.where('companyId', '==', companyId);
 
-      // convert inputs to Date/Timestamp
       if (from) {
-        const fromDate = (from instanceof Date) ? from : new Date(String(from));
-        if (isNaN(fromDate.getTime())) throw new BadRequestException('Invalid from date');
-        const fromTs = admin.firestore.Timestamp.fromDate(fromDate);
-        query = query.where('checkInTime', '>=', fromTs);
+        const fromDate = from instanceof Date ? from : new Date(String(from));
+        if (isNaN(fromDate.getTime())) throw new AppBadRequestException('Invalid from date');
+        query = query.where('checkInTime', '>=', admin.firestore.Timestamp.fromDate(fromDate));
       }
 
       if (to) {
-        const toDate = (to instanceof Date) ? to : new Date(String(to));
-        if (isNaN(toDate.getTime())) throw new BadRequestException('Invalid to date');
-        const toTs = admin.firestore.Timestamp.fromDate(toDate);
-        query = query.where('checkInTime', '<=', toTs);
+        const toDate = to instanceof Date ? to : new Date(String(to));
+        if (isNaN(toDate.getTime())) throw new AppBadRequestException('Invalid to date');
+        query = query.where('checkInTime', '<=', admin.firestore.Timestamp.fromDate(toDate));
       }
 
-      // Firestore requires orderBy on the range field when using range filters
       query = query.orderBy('checkInTime', 'desc');
 
       const snap = await query.get();

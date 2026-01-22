@@ -1,9 +1,10 @@
-import { Inject, Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Inject, Injectable } from '@nestjs/common';
 import * as admin from 'firebase-admin';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { BaseModel } from 'src/models/base.model';
+import { BaseModel } from '../models/base.model';
 import { UpdateAdminDto } from './dto/update-admin.dto';
+import { AppBadRequestException, AppNotFoundException } from '../exceptions';
 
 @Injectable()
 export class AdminService {
@@ -14,7 +15,7 @@ export class AdminService {
     }
 
     async registerSystemAdmin(createAdminDto: CreateAdminDto) {
-        if (!createAdminDto.password) throw new BadRequestException('password is required to create admin');
+        if (!createAdminDto.password) throw new AppBadRequestException('password is required to create admin');
 
         const adminAuth = await this.firebaseService.createUser({
             displayName: createAdminDto.name ?? '',
@@ -23,9 +24,7 @@ export class AdminService {
         });
 
         if (createAdminDto.roles?.length) {
-            await this.firebaseService.setCustomUserClaims(adminAuth.uid, {
-                roles: createAdminDto.roles
-            });
+            await this.firebaseService.setCustomUserClaims(adminAuth.uid, { roles: createAdminDto.roles });
         }
 
         const adminFS = {
@@ -45,20 +44,16 @@ export class AdminService {
     }
 
     async getAdminById(id: string) {
-        if (!id) throw new BadRequestException('id is required to get admin');
+        if (!id) throw new AppBadRequestException('id is required to get admin');
         const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) {
-            throw new NotFoundException(`Admin with id ${id} not found`);
-        }
+        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
         return adminDoc.data();
     }
 
     async updateSystemAdmin(id: string, updateAdminDto: UpdateAdminDto) {
-        if (!id) throw new BadRequestException('id is required to update admin');
+        if (!id) throw new AppBadRequestException('id is required to update admin');
         const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) {
-            throw new NotFoundException(`Admin with id ${id} not found`);
-        }
+        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
 
         // Prepare update for Firebase Auth (do not save password to Firestore)
         const authUpdate: any = {};
@@ -69,14 +64,12 @@ export class AdminService {
 
         if (Object.keys(authUpdate).length) {
             await admin.auth().updateUser(id, authUpdate).catch((err) => {
-                throw new BadRequestException(err.message || 'Failed to update auth user');
+                throw new AppBadRequestException(err.message || 'Failed to update auth user');
             });
         }
 
         // Update custom claims if roles provided
-        if (updateAdminDto.roles) {
-            await this.firebaseService.setCustomUserClaims(id, { roles: updateAdminDto.roles });
-        }
+        if (updateAdminDto.roles) await this.firebaseService.setCustomUserClaims(id, { roles: updateAdminDto.roles });
 
         // Prepare Firestore update, removing sensitive fields
         const firestoreUpdate: any = { ...updateAdminDto };
@@ -88,23 +81,18 @@ export class AdminService {
     }
 
     async deleteSystemAdmin(id: string) {
-        if (!id) throw new BadRequestException('id is required to delete admin');
+        if (!id) throw new AppBadRequestException('id is required to delete admin');
         const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) {
-            throw new NotFoundException(`Admin with id ${id} not found`);
-        }
-        // Archive admin marker and delete admin doc in a transaction,
-        // then remove the Auth user.
+        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
+
+        // Archive and delete admin doc in a transaction, then remove auth user.
         await this.firestore.runTransaction(async transaction => {
             const adminRef = this.adminCollection.doc(id);
             const adminDeletedRef = this.firestore.collection('admins_deleted').doc(id);
-            transaction.set(adminDeletedRef, {
-                deletedDate: admin.firestore.FieldValue.serverTimestamp(),
-            });
+            transaction.set(adminDeletedRef, { deletedDate: admin.firestore.FieldValue.serverTimestamp() });
             transaction.delete(adminRef);
         });
 
-        // remove auth user (outside transaction)
         await this.firebaseService.deleteUser(id);
         return { message: `Admin with id ${id} deleted and archived in admins_deleted` };
     }

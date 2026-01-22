@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Inject, ForbiddenException, BadRequestException, HttpCode } from '@nestjs/common';
+import { Controller, Get, Post, Body, Param, Put, Delete, UseGuards, Inject, HttpCode } from '@nestjs/common';
 import { UserService } from './user.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { RolesGuard } from 'src/roles/roles.guard';
@@ -8,9 +8,10 @@ import { FirebaseService } from 'src/firebase/firebase.service';
 import * as admin from 'firebase-admin';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { CreateChildDto } from 'src/children/dto/create-child.dto';
-import { User } from 'src/models/user.model';
+import { User } from '../models/user.model';
+import { AppUnauthorizedException, AppBadRequestException } from '../exceptions';
 
-@Controller('user')
+@Controller('users')
 export class UserController {
   constructor(private readonly userService: UserService,
     private readonly firebaseService: FirebaseService,
@@ -25,7 +26,7 @@ export class UserController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   @HttpCode(201)
   async registerUser(@IdToken() token: string, @Body() createUserDto: CreateUserDto) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
 
     const decoded = await this.firebaseService.verifyIdToken(token);
     const uid = decoded.uid;
@@ -34,19 +35,19 @@ export class UserController {
     // se o usuário for systemAdmin, ele pode criar usuários para qualquer empresa, mas deve passar o id da empresa no corpo da requisição
     if (callerRoles.includes('systemAdmin')) {
       if (!createUserDto.companyId) {
-        throw new BadRequestException('systemAdmin must provide companyId in request body');
+        throw new AppBadRequestException('systemAdmin must provide companyId in request body');
       }
       return this.userService.registerUser(createUserDto);
     }
 
     // caso contrário, o usuário deve ser collaborator ou companyAdmin e só pode criar usuários para a própria empresa
     const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
-    if (!collaboratorDoc.exists) throw new ForbiddenException('Collaborator not found');
+    if (!collaboratorDoc.exists) throw new AppUnauthorizedException('Collaborator not found');
 
     const collabData = collaboratorDoc.data() as any;
     const companyIdFromCollaborator = collabData.companyId;
 
-    if (!companyIdFromCollaborator) throw new ForbiddenException('Collaborator has no company assigned');
+    if (!companyIdFromCollaborator) throw new AppUnauthorizedException('Collaborator has no company assigned');
     createUserDto.companyId = companyIdFromCollaborator;
     
     return this.userService.registerUser(createUserDto);
@@ -59,7 +60,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async getUserById(@IdToken() token: string, @Param('id') id: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.userService.getUserById(id);
   }
 
@@ -70,7 +71,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
   async getAllUsersFromCompany(@IdToken() token: string, @Param('companyId') companyId?: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
 
     return this.userService.getAllUsersFromCompany(companyId);
   }
@@ -83,7 +84,7 @@ export class UserController {
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   async updateUser(@IdToken() token: string, @Param('id') id: string, @Body() updateUserDto: CreateUserDto) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.userService.updateUser(id, updateUserDto);
   }
 
@@ -95,7 +96,7 @@ export class UserController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   @HttpCode(204)
   async deleteUser(@IdToken() token: string, @Param('id') id: string) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
     return this.userService.deleteUser(id);
   }
 
@@ -108,7 +109,7 @@ export class UserController {
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin'))
   @HttpCode(201)
   async registerChild(@IdToken() token: string, @Param('parentId') parentId: string, @Body() createChildDto: CreateChildDto) {
-    if (!token) throw new ForbiddenException('Missing auth token');
+    if (!token) throw new AppUnauthorizedException('Missing auth token');
 
     const decoded = await this.firebaseService.verifyIdToken(token);
     const uid = decoded.uid;
@@ -118,16 +119,16 @@ export class UserController {
     const parentDoc = this.firestore.collection('users').doc(parentId);
     const parentSnap = await parentDoc.get();
 
-    if (!parentSnap.exists) throw new BadRequestException(`Parent user with id ${parentId} not found`);
+    if (!parentSnap.exists) throw new AppBadRequestException(`Parent user with id ${parentId} not found`);
     const parentData = { ...(parentSnap.data() as any), id: parentSnap.id } as User;
 
     // autorização: systemAdmin pode sempre; caso contrário, permitir se for o próprio pai ou colaborador da mesma empresa
     if (!callerRoles.includes('systemAdmin')) {
       if (uid !== parentId) {
         const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
-        if (!collaboratorDoc.exists) throw new ForbiddenException('Collaborator not found');
+        if (!collaboratorDoc.exists) throw new AppUnauthorizedException('Collaborator not found');
         const collabData = collaboratorDoc.data() as any;
-        if (collabData.companyId !== parentData.companyId) throw new ForbiddenException('Not authorized to create child for this user');
+        if (collabData.companyId !== parentData.companyId) throw new AppUnauthorizedException('Not authorized to create child for this user');
       }
     }
 

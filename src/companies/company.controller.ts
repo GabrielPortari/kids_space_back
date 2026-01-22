@@ -5,11 +5,11 @@ import { ApiBearerAuth, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@ne
 import { CreateCompanyDto } from './dto/create-company.dto';
 import { CreateCollaboratorDto } from 'src/collaborator/dto/create-collaborator.dto';
 
-@Controller('company')
+@Controller('companies')
 export class CompanyController {
   constructor(private readonly service: CompanyService) {}
 
-  @Post('register')
+  @Post()
   @ApiOperation({ summary: 'Registra nova empresa' })
   @ApiBody({ type: CreateCompanyDto })
   @ApiResponse({ status: 201, description: 'Empresa criada' })
@@ -23,7 +23,7 @@ export class CompanyController {
   @Put(':id')
   @ApiOperation({ summary: 'Atualiza empresa' })
   @ApiParam({ name: 'id', description: 'Id da empresa' })
-  @ApiBody({ type: CreateCompanyDto })
+  @ApiBody({ type: UpdateCompanyDto })
   @ApiResponse({ status: 200, description: 'Empresa atualizada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
