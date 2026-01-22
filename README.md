@@ -23,7 +23,15 @@
 
 ## Description
 
-[Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
+Atualizado para refletir o estado atual do projeto Kids Space (backend).
+Implementação baseada em NestJS + Firebase (Auth + Firestore).
+
+Principais pontos:
+- Tratamento de erros unificado: `src/exceptions/app.exceptions.ts` provê exceções do tipo `AppBadRequestException`, `AppNotFoundException`, `AppUnauthorizedException`, `AppServiceUnavailableException` etc., usadas por toda a API.
+- Padrões de rota e documentação foram padronizados (pluralização de recursos, correções Swagger).
+- Firestore: uso intensivo de transações que seguem o padrão "read before write" e retornam snapshots para evitar leituras extras.
+- Firebase: `src/firebase/firebase.service.ts` encapsula chamadas ao Admin SDK e REST (auth endpoints) com mapeamento de erros para exceções da aplicação.
+- Testes unitários: adicionados specs básicos para os serviços principais e correções de mocks para Jest.
 
 ## Project setup
 
@@ -96,3 +104,65 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 ## License
 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
+
+---
+
+**Guia rápido — comportamento atual**
+
+- Exceções centrais: veja `src/exceptions/app.exceptions.ts` (use essas exceções nos handlers do frontend quando a API devolver `status` e `message`).
+- Endpoints principais (rotas a ajustar no frontend):
+  - `POST /auth/login`
+  - `POST /auth/refresh-auth`
+  - `POST /auth/logout`
+  - `GET  /auth/me`
+
+  - `POST /admin`
+  - `GET /admin/:id`
+  - `PUT /admin/:id`
+  - `DELETE /admin/:id`
+
+  - `POST /attendance/checkin`
+  - `POST /attendance/checkout`
+  - `GET  /attendance/company/:companyId`
+  - `GET  /attendance/company/:companyId/last-checkin`
+  - `GET  /attendance/company/:companyId/last-checkout`
+  - `GET  /attendance/company/:companyId/last-10`
+  - `GET  /attendance/company/:companyId/active-checkins`
+  - `GET  /attendance/company/:companyId/between?from=<iso>&to=<iso>`
+  - `GET  /attendance/:id`
+
+  - `GET  /children/:id`
+  - `GET  /children/company/:companyId`
+  - `PUT  /children/:id`
+  - `DELETE /children/:id`
+
+  - `GET  /collaborator/:id`
+  - `GET  /collaborator/company/:companyId`
+  - `POST /collaborator`
+  - `PUT  /collaborator/:id`
+  - `DELETE /collaborator/:id`
+
+  - `POST /companies`
+  - `PUT  /companies/:id`
+  - `GET  /companies/:id`
+  - `GET  /companies`
+  - `DELETE /companies/:id`
+
+  - `POST /users/register`
+  - `GET  /users/:id`
+  - `GET  /users/company/:companyId`
+  - `PUT  /users/:id`
+  - `DELETE /users/:id`
+  - `POST /users/:parentId/child`
+
+Observação: os controllers com seus paths estão em `src/*/*.controller.ts` (por exemplo `src/users/user.controller.ts`).
+
+**Como interpretar erros:** a API lança exceções `App*` que decoram respostas HTTP (código e mensagem). No frontend trate status HTTP (400/401/404/503) e use o `message` do body para exibir erros amigáveis.
+
+**Variáveis/credenciais:**
+- A aplicação depende de credenciais do Firebase (o arquivo `serviceAccountKey.json` está no `src/` para desenvolvimento local). Não comite credenciais sensíveis em repositórios públicos.
+
+**Testes & CI:**
+- Executar testes: `npm run test`. Durante a padronização foram adicionados specs para `attendance`, `admin`, `auth`, `children`, `collaborator`, `companies`, `firebase`, `users` (smoke tests + alguns casos). A suíte de testes local está passando.
+
+Se quiser, eu atualizo este README com exemplos de payload para os endpoints mais usados, ou gero um arquivo CSV/JSON contendo todas as rotas para importar direto no frontend.
