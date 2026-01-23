@@ -96,5 +96,4 @@ export class AdminService {
         await this.firebaseService.deleteUser(id);
         return { message: `Admin with id ${id} deleted and archived in admins_deleted` };
     }
-
 }

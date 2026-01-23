@@ -68,7 +68,7 @@ export class AttendanceController {
 
   @ApiOperation({ summary: 'Obtém os 10 últimos atendimentos da empresa' })
   @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Lista dos 30 últimos atendimentos' })
+  @ApiResponse({ status: 200, description: 'Lista dos 10 últimos atendimentos' })
   @Get('company/:companyId/last-10')
   @ApiBearerAuth()
   @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
