@@ -1,23 +1,3 @@
-<p align="center">
-  <a href="http://nestjs.com/" target="blank"><img src="https://nestjs.com/img/logo-small.svg" width="120" alt="Nest Logo" /></a>
-</p>
-
-[circleci-image]: https://img.shields.io/circleci/build/github/nestjs/nest/master?token=abc123def456
-[circleci-url]: https://circleci.com/gh/nestjs/nest
-
-  <p align="center">A progressive <a href="http://nodejs.org" target="_blank">Node.js</a> framework for building efficient and scalable server-side applications.</p>
-    <p align="center">
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/v/@nestjs/core.svg" alt="NPM Version" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/l/@nestjs/core.svg" alt="Package License" /></a>
-<a href="https://www.npmjs.com/~nestjscore" target="_blank"><img src="https://img.shields.io/npm/dm/@nestjs/common.svg" alt="NPM Downloads" /></a>
-<a href="https://circleci.com/gh/nestjs/nest" target="_blank"><img src="https://img.shields.io/circleci/build/github/nestjs/nest/master" alt="CircleCI" /></a>
-<a href="https://discord.gg/G7Qnnhy" target="_blank"><img src="https://img.shields.io/badge/discord-online-brightgreen.svg" alt="Discord"/></a>
-<a href="https://opencollective.com/nest#backer" target="_blank"><img src="https://opencollective.com/nest/backers/badge.svg" alt="Backers on Open Collective" /></a>
-<a href="https://opencollective.com/nest#sponsor" target="_blank"><img src="https://opencollective.com/nest/sponsors/badge.svg" alt="Sponsors on Open Collective" /></a>
-  <a href="https://paypal.me/kamilmysliwiec" target="_blank"><img src="https://img.shields.io/badge/Donate-PayPal-ff3f59.svg" alt="Donate us"/></a>
-    <a href="https://opencollective.com/nest#sponsor"  target="_blank"><img src="https://img.shields.io/badge/Support%20us-Open%20Collective-41B883.svg" alt="Support us"></a>
-  <a href="https://twitter.com/nestframework" target="_blank"><img src="https://img.shields.io/twitter/follow/nestframework.svg?style=social&label=Follow" alt="Follow us on Twitter"></a>
-</p>
   <!--[![Backers on Open Collective](https://opencollective.com/nest/backers/badge.svg)](https://opencollective.com/nest#backer)
   [![Sponsors on Open Collective](https://opencollective.com/nest/sponsors/badge.svg)](https://opencollective.com/nest#sponsor)-->
 
@@ -106,63 +86,99 @@ Nest is an MIT-licensed open source project. It can grow thanks to the sponsors 
 Nest is [MIT licensed](https://github.com/nestjs/nest/blob/master/LICENSE).
 
 ---
+# Kids Space — Backend
 
-**Guia rápido — comportamento atual**
+Projeto backend em NestJS com integração ao Firebase (Auth + Firestore).
 
-- Exceções centrais: veja `src/exceptions/app.exceptions.ts` (use essas exceções nos handlers do frontend quando a API devolver `status` e `message`).
-- Endpoints principais (rotas a ajustar no frontend):
-  - `POST /auth/login`
-  - `POST /auth/refresh-auth`
-  - `POST /auth/logout`
-  - `GET  /auth/me`
+Resumo rápido:
+- Tratamento de erros centralizado em `src/exceptions` (ex.: `AppBadRequestException`, `AppUnauthorizedException`).
+- Rotas padronizadas (pluralização de recursos) e documentação Swagger atualizada.
 
-  - `POST /admin`
-  - `GET /admin/:id`
-  - `PUT /admin/:id`
-  - `DELETE /admin/:id`
+**Instalação**
 
-  - `POST /attendance/checkin`
-  - `POST /attendance/checkout`
-  - `GET  /attendance/company/:companyId`
-  - `GET  /attendance/company/:companyId/last-checkin`
-  - `GET  /attendance/company/:companyId/last-checkout`
-  - `GET  /attendance/company/:companyId/last-10`
-  - `GET  /attendance/company/:companyId/active-checkins`
-  - `GET  /attendance/company/:companyId/between?from=<iso>&to=<iso>`
-  - `GET  /attendance/:id`
+```bash
+npm install
+```
 
-  - `GET  /children/:id`
-  - `GET  /children/company/:companyId`
-  - `PUT  /children/:id`
-  - `DELETE /children/:id`
+**Execução**
 
-  - `GET  /collaborator/:id`
-  - `GET  /collaborator/company/:companyId`
-  - `POST /collaborator`
-  - `PUT  /collaborator/:id`
-  - `DELETE /collaborator/:id`
+```bash
+# desenvolvimento
+npm run start:dev
 
-  - `POST /companies`
-  - `PUT  /companies/:id`
-  - `GET  /companies/:id`
-  - `GET  /companies`
-  - `DELETE /companies/:id`
+# produção
+npm run start:prod
+```
 
-  - `POST /users/register`
-  - `GET  /users/:id`
-  - `GET  /users/company/:companyId`
-  - `PUT  /users/:id`
-  - `DELETE /users/:id`
-  - `POST /users/:parentId/child`
+**Testes**
 
-Observação: os controllers com seus paths estão em `src/*/*.controller.ts` (por exemplo `src/users/user.controller.ts`).
+```bash
+npm run test
+```
 
-**Como interpretar erros:** a API lança exceções `App*` que decoram respostas HTTP (código e mensagem). No frontend trate status HTTP (400/401/404/503) e use o `message` do body para exibir erros amigáveis.
+**Endpoints principais (ajustar no frontend)**
 
-**Variáveis/credenciais:**
-- A aplicação depende de credenciais do Firebase (o arquivo `serviceAccountKey.json` está no `src/` para desenvolvimento local). Não comite credenciais sensíveis em repositórios públicos.
+- Auth:
+  - POST /auth/login
+  - POST /auth/refresh-auth
+  - POST /auth/logout
+  - GET  /auth/me
 
-**Testes & CI:**
-- Executar testes: `npm run test`. Durante a padronização foram adicionados specs para `attendance`, `admin`, `auth`, `children`, `collaborator`, `companies`, `firebase`, `users` (smoke tests + alguns casos). A suíte de testes local está passando.
+- Admins:
+  - POST /admin
+  - GET  /admin/:id
+  - PUT  /admin/:id
+  - DELETE /admin/:id
 
-Se quiser, eu atualizo este README com exemplos de payload para os endpoints mais usados, ou gero um arquivo CSV/JSON contendo todas as rotas para importar direto no frontend.
+- Attendance:
+  - POST /attendance/checkin
+  - POST /attendance/checkout
+  - GET  /attendance/company/:companyId
+  - GET  /attendance/company/:companyId/last-checkin
+  - GET  /attendance/company/:companyId/last-checkout
+  - GET  /attendance/company/:companyId/last-10
+  - GET  /attendance/company/:companyId/active-checkins
+  - GET  /attendance/company/:companyId/between?from=<iso>&to=<iso>
+  - GET  /attendance/:id
+
+- Children:
+  - GET  /children/:id
+  - GET  /children/company/:companyId
+  - PUT  /children/:id
+  - DELETE /children/:id
+
+- Collaborator:
+  - GET  /collaborator/:id
+  - GET  /collaborator/company/:companyId
+  - POST /collaborator
+  - PUT  /collaborator/:id
+  - DELETE /collaborator/:id
+
+- Companies:
+  - POST /companies
+  - PUT  /companies/:id
+  - GET  /companies/:id
+  - GET  /companies
+  - DELETE /companies/:id
+
+- Users:
+  - POST /users/register
+  - GET  /users/:id
+  - GET  /users/company/:companyId
+  - PUT  /users/:id
+  - DELETE /users/:id
+  - POST /users/:parentId/child
+
+Observação: os controllers estão em `src/*/*.controller.ts`.
+
+**Tratamento de erros**
+
+A API usa exceções do tipo `App*` que mapeiam para códigos HTTP. No frontend trate os códigos (400, 401, 404, 503) e exiba `message` retornado no corpo da resposta.
+
+**Credenciais**
+
+Para desenvolvimento local é necessário o `serviceAccountKey.json` do Firebase em `src/`.
+
+---
+
+Se quiser, eu exporto todas as rotas em JSON/CSV para importar direto no frontend ou gero exemplos de payloads para os endpoints mais usados.
