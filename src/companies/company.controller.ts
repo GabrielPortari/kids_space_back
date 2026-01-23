@@ -3,6 +3,7 @@ import { CompanyService } from './company.service';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { ApiBearerAuth, ApiOperation, ApiBody, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { CreateCompanyDto } from './dto/create-company.dto';
+import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CreateCollaboratorDto } from 'src/collaborator/dto/create-collaborator.dto';
 
 @Controller('companies')
@@ -27,7 +28,7 @@ export class CompanyController {
   @ApiResponse({ status: 200, description: 'Empresa atualizada' })
   @ApiBearerAuth()
   @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
-  async updateCompany(@Param('id') id: string, @Body() updateCompanyDto: CreateCompanyDto) {
+  async updateCompany(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
     return this.service.updateCompany(id, updateCompanyDto);
   }
 
