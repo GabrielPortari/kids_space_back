@@ -36,26 +36,15 @@ export class CollaboratorService {
     // set custom claims (roles) in Firebase Auth; rollback user if this fails
     try {
       await this.firebaseService.setCustomUserClaims(uid, { roles: rolesToSet });
-      console.log(`Custom claims set for user ${uid}:`, { roles: rolesToSet });
       // verify written claims immediately and retry once if mismatch
       try {
         const userRecord = await admin.auth().getUser(uid);
         const existingRoles = (userRecord.customClaims && (userRecord.customClaims as any).roles) || [];
         const rolesMatch = Array.isArray(existingRoles) && existingRoles.length === rolesToSet.length && rolesToSet.every(r => existingRoles.includes(r));
         if (!rolesMatch) {
-          console.warn(`Custom claims mismatch detected for uid ${uid}. expected=${JSON.stringify(rolesToSet)} actual=${JSON.stringify(existingRoles)} — retrying setCustomUserClaims`);
           await this.firebaseService.setCustomUserClaims(uid, { roles: rolesToSet });
-          const retryUser = await admin.auth().getUser(uid);
-          const retryRoles = (retryUser.customClaims && (retryUser.customClaims as any).roles) || [];
-          const retryMatch = Array.isArray(retryRoles) && retryRoles.length === rolesToSet.length && rolesToSet.every(r => retryRoles.includes(r));
-          if (!retryMatch) {
-            console.warn(`Custom claims still mismatch for uid ${uid} after retry. expected=${JSON.stringify(rolesToSet)} actual=${JSON.stringify(retryRoles)}`);
-          } else {
-            console.log(`Custom claims fixed for uid ${uid} after retry.`);
-          }
         }
       } catch (inspectErr) {
-        console.warn('Could not verify custom claims for uid', uid, inspectErr?.message || inspectErr);
       }
     } catch (err) {
       await this.firebaseService.deleteUser(uid).catch(() => {});
