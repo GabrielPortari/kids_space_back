@@ -2,8 +2,8 @@ import { BaseModel } from './base.model';
 
 export class Company extends BaseModel {
   fantasyName?: string;
-  legalName?: string;
-  document?: string;
+  corporateName?: string;
+  cnpj?: string;
   website?: string;
   address?: string;
   addressNumber?: string;
@@ -15,11 +15,10 @@ export class Company extends BaseModel {
   phone?: string;
   email?: string;
   logoUrl?: string;
-  status?: 'active' | 'inactive';
+  responsibleId?: string;
   collaborators?: number;
   users?: number;
   children?: number;
-
 
   constructor(init?: Partial<Company>) {
     super(init);

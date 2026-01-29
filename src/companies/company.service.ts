@@ -22,11 +22,12 @@ export class CompanyService {
 
   async createCompany(createCompanyDto: CreateCompanyDto): Promise<Company> {
     const docRef = this.collection.doc();
+
     const newCompany: Company = {
       id: docRef.id,
       fantasyName: createCompanyDto.fantasyName,
-      legalName: createCompanyDto.legalName,
-      document: createCompanyDto.document,
+      corporateName: createCompanyDto.corporateName,
+      cnpj: createCompanyDto.cnpj,
       website: createCompanyDto.website,
       addressNumber: createCompanyDto.addressNumber,
       addressComplement: createCompanyDto.addressComplement,
@@ -37,11 +38,52 @@ export class CompanyService {
       phone: createCompanyDto.phone,
       email: createCompanyDto.email,
       logoUrl: createCompanyDto.logoUrl,
-      status: createCompanyDto.status,
+      collaborators: createCompanyDto.collaborators,
+      users: createCompanyDto.users,
+      children: createCompanyDto.children,
       address: createCompanyDto.address,
+      responsibleId: createCompanyDto.responsibleId,
+    };
+
+    await docRef.set(newCompany);
+    const companyDoc = await this.collection.doc(docRef.id).get();
+    return companyDoc.data() as Company;
+  }
+
+  async createCompanyReturnId(createCompanyDto: CreateCompanyDto): Promise<string> {
+    const docRef = this.collection.doc();
+    const newCompany: Partial<Company> = {
+      fantasyName: createCompanyDto.fantasyName,
+      corporateName: createCompanyDto.corporateName,
+      cnpj: createCompanyDto.cnpj,
+      website: createCompanyDto.website,
+      addressNumber: createCompanyDto.addressNumber,
+      addressComplement: createCompanyDto.addressComplement,
+      neighborhood: createCompanyDto.neighborhood,
+      city: createCompanyDto.city,
+      state: createCompanyDto.state,
+      zipCode: createCompanyDto.zipCode,
+      phone: createCompanyDto.phone,
+      email: createCompanyDto.email,
+      logoUrl: createCompanyDto.logoUrl,
+      collaborators: createCompanyDto.collaborators,
+      users: createCompanyDto.users,
+      children: createCompanyDto.children,
+      address: createCompanyDto.address,
+      responsibleId: createCompanyDto.responsibleId,
     };
     await docRef.set(newCompany);
-    return newCompany;
+    return docRef.id;
+  }
+
+  async updateCompanyResponsible(companyId: string, responsibleId: string) {
+    if (!companyId) throw new AppBadRequestException('companyId is required');
+    if (!responsibleId) throw new AppBadRequestException('responsibleId is required');
+    const companyDoc = await this.collection.doc(companyId).get();
+    if (!companyDoc.exists) throw new AppNotFoundException(`Company with id ${companyId} not found`);
+    await this.collection.doc(companyId).update({ responsibleId });
+    const updated = await this.collection.doc(companyId).get();
+    return updated.data();
   }
   
   async getCompanyById(id: string) {

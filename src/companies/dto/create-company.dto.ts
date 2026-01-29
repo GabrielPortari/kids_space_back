@@ -4,9 +4,12 @@ import {
   IsString,
   IsEmail,
   IsUrl,
-  IsIn,
   IsPhoneNumber,
   IsPostalCode,
+  IsInt,
+  IsObject,
+  IsArray,
+  IsIn,
 } from 'class-validator';
 
 export class CreateCompanyDto {
@@ -15,15 +18,16 @@ export class CreateCompanyDto {
   @IsString()
   fantasyName?: string;
 
-  @ApiPropertyOptional({ description: 'Razão social' })
-  @IsOptional()
-  @IsString()
-  legalName?: string;
 
-  @ApiPropertyOptional({ description: 'Documento (CNPJ/CPF)' })
+  @ApiPropertyOptional({ description: 'Razão social / corporate name' })
   @IsOptional()
   @IsString()
-  document?: string;
+  corporateName?: string;
+
+  @ApiPropertyOptional({ description: 'CNPJ' })
+  @IsOptional()
+  @IsString()
+  cnpj?: string;
 
   @ApiPropertyOptional({ description: 'Website da empresa' })
   @IsOptional()
@@ -80,8 +84,41 @@ export class CreateCompanyDto {
   @IsUrl()
   logoUrl?: string;
 
-  @ApiPropertyOptional({ description: 'Status da empresa', enum: ['active', 'inactive'], default: 'active' })
+  @ApiPropertyOptional({ description: 'Responsável (objeto BaseUser)' })
   @IsOptional()
-  @IsIn(['active', 'inactive'])
-  status?: 'active' | 'inactive';
+  @IsObject()
+  responsible?: any;
+
+  @ApiPropertyOptional({ description: 'Roles do responsável (ex: ["companyAdmin"])' })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  @IsIn(['collaborator', 'companyAdmin'], { each: true })
+  responsibleRoles?: string[];
+
+  @ApiPropertyOptional({ description: 'User type do responsável', enum: ['collaborator', 'companyAdmin'] })
+  @IsOptional()
+  @IsString()
+  @IsIn(['collaborator', 'companyAdmin'])
+  responsibleUserType?: 'collaborator' | 'companyAdmin';
+
+  @ApiPropertyOptional({ description: 'ID do responsável já existente (alternativa ao objeto responsible)' })
+  @IsOptional()
+  @IsString()
+  responsibleId?: string;
+
+  @ApiPropertyOptional({ description: 'Número de colaboradores' })
+  @IsOptional()
+  @IsInt()
+  collaborators?: number;
+
+  @ApiPropertyOptional({ description: 'Número de usuários' })
+  @IsOptional()
+  @IsInt()
+  users?: number;
+
+  @ApiPropertyOptional({ description: 'Número de crianças' })
+  @IsOptional()
+  @IsInt()
+  children?: number;
 }
