@@ -1,52 +1,34 @@
-import { Body, Controller, Post, Delete, Param, UseGuards, Get, Put } from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete } from '@nestjs/common';
 import { AdminService } from './admin.service';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { ApiBearerAuth, ApiResponse, ApiBody, ApiParam, ApiOperation } from '@nestjs/swagger';
-import { RolesGuard } from 'src/roles/roles.guard';
 import { UpdateAdminDto } from './dto/update-admin.dto';
 
 @Controller('admin')
 export class AdminController {
-  constructor(private readonly service: AdminService) {}
+  constructor(private readonly adminService: AdminService) {}
 
-  @ApiOperation({ summary: 'Cria um novo administrador' })
-  @ApiBody({ type: CreateAdminDto })
-  @ApiResponse({ status: 201, description: 'Administrador criado.' })
   @Post()
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master'))
-  async registerSystemAdmin(@Body() createAdminDto: CreateAdminDto) {
-    return this.service.registerSystemAdmin(createAdminDto);
+  create(@Body() createAdminDto: CreateAdminDto) {
+    return this.adminService.create(createAdminDto);
   }
 
-  @ApiOperation({ summary: 'Obtém um administrador pelo ID' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 200, description: 'Administrador encontrado.' })
+  @Get()
+  findAll() {
+    return this.adminService.findAll();
+  }
+
   @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master'))
-  async getAdminById(@Param('id') id: string) {
-    return this.service.getAdminById(id);
+  findOne(@Param('id') id: string) {
+    return this.adminService.findOne(+id);
   }
 
-  @ApiOperation({ summary: 'Atualiza um administrador pelo ID' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiBody({ type: UpdateAdminDto })
-  @ApiResponse({ status: 200, description: 'Administrador atualizado.' })
-  @Put(':id')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master'))
-  async updateAdmin(@Param('id') id: string, @Body() createAdminDto: CreateAdminDto) {
-    return this.service.updateSystemAdmin(id, createAdminDto);
+  @Patch(':id')
+  update(@Param('id') id: string, @Body() updateAdminDto: UpdateAdminDto) {
+    return this.adminService.update(+id, updateAdminDto);
   }
 
-  @ApiOperation({ summary: 'Deleta um administrador pelo ID' })
-  @ApiParam({ name: 'id', type: String })
-  @ApiResponse({ status: 200, description: 'Administrador deletado.' })
   @Delete(':id')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master'))
-  async deleteSystemAdmin(@Param('id') id: string) {
-    return this.service.deleteSystemAdmin(id);
+  remove(@Param('id') id: string) {
+    return this.adminService.remove(+id);
   }
 }

@@ -10,6 +10,14 @@ import { UserModule } from './users/user.module';
 import { CompanyModule } from './companies/company.module';
 import { ChildrenModule } from './children/children.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { UsersModule } from './users/users.module';
+import { UserModule } from './user/user.module';
+import { CollaboratorModule } from './collaborator/collaborator.module';
+import { ChildModule } from './child/child.module';
+import { ParentModule } from './parent/parent.module';
+import { AttendanceModule } from './attendance/attendance.module';
+import { AdminModule } from './admin/admin.module';
+import { AuthModule } from './auth/auth.module';
 
 @Module({
   imports: [
@@ -23,6 +31,9 @@ import { AttendanceModule } from './attendance/attendance.module';
     UserModule,
     ChildrenModule,
     AttendanceModule,
+    UsersModule,
+    ChildModule,
+    ParentModule,
   ],
   providers: [AppService],
 })
