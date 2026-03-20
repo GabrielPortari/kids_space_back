@@ -18,7 +18,7 @@ import {
   ApiBody,
 } from '@nestjs/swagger';
 import { AuthGuard } from './auth.guard';
-import { SignupBusinessDto } from './dto/signup-business.dto';
+import { SignupCompanyDto } from './dto/signup-company.dto';
 import { RecoverPasswordDto } from './dto/recover-password.dto';
 import { AuthRateLimitGuard } from './auth-rate-limit.guard';
 
@@ -42,18 +42,18 @@ export class AuthController {
   @Post('signup/business')
   @ApiOperation({ summary: 'Registra um novo negócio' })
   @ApiBody({
-    type: SignupBusinessDto,
+    type: SignupCompanyDto,
     examples: {
-      businessSignup: {
+      companySignup: {
         summary: 'Payload oficial de cadastro de empresa',
         value: {
-          name: 'Café do Centro',
-          legalName: 'Café do Centro LTDA',
+          name: 'Teatro Municipal',
+          legalName: 'Teatro Municipal LTDA',
           cnpj: '12345678000195',
           website: 'https://cafedocentro.com.br',
           logoUrl: 'https://cdn.exemplo.com/logo.png',
           contact: '+5511999999999',
-          email: 'contato@cafedocentro.com.br',
+          email: 'contato@teatromunicipal.com.br',
           password: 'senhaForte123',
           address: {
             address: 'Rua das Flores',
@@ -74,10 +74,10 @@ export class AuthController {
     schema: {
       example: {
         user: {
-          uid: 'business-uid',
-          email: 'contato@cafedocentro.com.br',
-          name: 'Café do Centro',
-          role: 'BUSINESS',
+          uid: 'company-uid',
+          email: 'contato@teatromunicipal.com.br',
+          name: 'Teatro Municipal',
+          role: 'COMPANY',
         },
         idToken: '<jwt>',
         refreshToken: '<refresh-token>',
@@ -99,8 +99,8 @@ export class AuthController {
     },
   })
   @HttpCode(201)
-  async signupBusiness(@Body() signupDto: SignupBusinessDto) {
-    return this.authService.signupBusiness(signupDto as any);
+  async signupCompany(@Body() signupDto: SignupCompanyDto) {
+    return this.authService.signupCompany(signupDto as any);
   }
 
   @Post('refresh-auth')

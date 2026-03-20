@@ -51,7 +51,7 @@ class AddressDto {
   zipcode: string;
 }
 
-export class SignupBusinessDto {
+export class SignupCompanyDto {
   @ApiProperty({ example: 'Cafeteria do Bairro' })
   @IsString()
   @IsNotEmpty()

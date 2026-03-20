@@ -6,13 +6,10 @@ import {
   Injectable,
   UnauthorizedException,
 } from '@nestjs/common';
-import { SignupBusinessDto } from './dto/signup-business.dto';
-import { SignupUserDto } from './dto/signup-user.dto';
+import { SignupCompanyDto } from './dto/signup-company.dto';
 import * as admin from 'firebase-admin';
-import { BusinessEntity } from 'src/business/entities/business.entity';
-import { Business } from 'src/models/business.model';
-import { User } from 'src/models/user.model';
-import { BaseModel } from 'src/models/base.model';
+import { CompanyEntity } from 'src/company/entities/company.entity';
+import { Company } from 'src/models/company.model';
 import { Address } from 'src/models/address.model';
 import { Collections } from 'src/constants/collections';
 import { Role } from 'src/constants/roles';
@@ -68,11 +65,11 @@ export class AuthService {
     return { message: 'E-mail de recuperação enviado com sucesso.' };
   }
 
-  async signupBusiness(dto: SignupBusinessDto) {
+  async signupCompany(dto: SignupCompanyDto) {
     const email = dto.email.trim().toLowerCase();
     const cnpj = this.normalizeCnpj(dto.cnpj);
 
-    const uniquenessLocks = await this.acquireBusinessSignupLocks(email, cnpj);
+    const uniquenessLocks = await this.acquireCompanySignupLocks(email, cnpj);
     let shouldReleaseLocks = true;
 
     try {
@@ -94,8 +91,8 @@ export class AuthService {
         role: Role.COMPANY,
       });
 
-      // persist business using BusinessEntity mapper (adds serverTimestamp via BaseModel)
-      const businessModel = new Business({
+      // persist company using CompanyEntity mapper (adds serverTimestamp via BaseModel)
+      const companyModel = new Company({
         name: dto.name,
         legalName: dto.legalName,
         cnpj,
@@ -116,15 +113,13 @@ export class AuthService {
         active: false,
       } as any);
 
-      const businessData = BusinessEntity.toFirestore(
-        businessModel as Business,
-      );
+      const companyData = CompanyEntity.toFirestore(companyModel as Company);
 
       try {
         await this.firebaseService.createDocument(
-          Collections.BUSINESSES,
+          Collections.COMPANIES,
           userRecord.uid,
-          businessData,
+          companyData,
         );
       } catch (err) {
         await this.firebaseService.deleteUser(userRecord.uid);
@@ -142,7 +137,7 @@ export class AuthService {
         try {
           await admin
             .firestore()
-            .collection(Collections.BUSINESSES)
+            .collection(Collections.COMPANIES)
             .doc(userRecord.uid)
             .delete();
         } catch (e) {
@@ -165,7 +160,7 @@ export class AuthService {
       };
     } finally {
       if (shouldReleaseLocks) {
-        await this.releaseBusinessSignupLocks(uniquenessLocks);
+        await this.releaseCompanySignupLocks(uniquenessLocks);
       }
     }
   }
@@ -174,7 +169,7 @@ export class AuthService {
     return cnpj.replace(/\D/g, '');
   }
 
-  private async acquireBusinessSignupLocks(email: string, cnpj: string) {
+  private async acquireCompanySignupLocks(email: string, cnpj: string) {
     const db = admin.firestore();
     const emailLockDocId = this.buildSignupLockDocId('email', email);
     const cnpjLockDocId = this.buildSignupLockDocId('cnpj', cnpj);
@@ -196,10 +191,10 @@ export class AuthService {
         throw new ConflictException('CNPJ já cadastrado');
       }
 
-      const [businessByEmail, userByEmail, businessByCnpj] = await Promise.all([
+      const [companyByEmail, userByEmail, companyByCnpj] = await Promise.all([
         tx.get(
           db
-            .collection(Collections.BUSINESSES)
+            .collection(Collections.COMPANIES)
             .where('email', '==', email)
             .limit(1),
         ),
@@ -208,27 +203,27 @@ export class AuthService {
         ),
         tx.get(
           db
-            .collection(Collections.BUSINESSES)
+            .collection(Collections.COMPANIES)
             .where('cnpj', '==', cnpj)
             .limit(1),
         ),
       ]);
 
-      if (!businessByCnpj.empty) {
+      if (!companyByCnpj.empty) {
         throw new ConflictException('CNPJ já cadastrado');
       }
 
-      if (!businessByEmail.empty || !userByEmail.empty) {
+      if (!companyByEmail.empty || !userByEmail.empty) {
         throw new ConflictException('Email já cadastrado');
       }
 
       tx.set(emailLockRef, {
-        type: 'signup_business_email',
+        type: 'signup_company_email',
         value: email,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
       tx.set(cnpjLockRef, {
-        type: 'signup_business_cnpj',
+        type: 'signup_company_cnpj',
         value: cnpj,
         createdAt: admin.firestore.FieldValue.serverTimestamp(),
       });
@@ -237,7 +232,7 @@ export class AuthService {
     return { emailLockDocId, cnpjLockDocId };
   }
 
-  private async releaseBusinessSignupLocks(locks: {
+  private async releaseCompanySignupLocks(locks: {
     emailLockDocId: string;
     cnpjLockDocId: string;
   }) {
@@ -250,7 +245,7 @@ export class AuthService {
 
   private buildSignupLockDocId(type: 'email' | 'cnpj', value: string) {
     const normalized = Buffer.from(value).toString('base64url');
-    return `signup_business_${type}_${normalized}`;
+    return `signup_company_${type}_${normalized}`;
   }
 
   private isDuplicateEmailError(error: unknown) {
