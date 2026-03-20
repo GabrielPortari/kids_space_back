@@ -10,14 +10,14 @@ import { Role } from 'src/constants/roles';
 import { Collections } from 'src/constants/collections';
 import * as admin from 'firebase-admin';
 
-describe('AuthService - signupBusiness', () => {
+describe('AuthService - signupCompany', () => {
   let service: AuthService;
   let firestoreState: {
     emailLockExists: boolean;
     cnpjLockExists: boolean;
-    businessEmailExists: boolean;
+    companyEmailExists: boolean;
     userEmailExists: boolean;
-    businessCnpjExists: boolean;
+    companyCnpjExists: boolean;
   };
   let tokenDocs: Set<string>;
 
@@ -51,10 +51,10 @@ describe('AuthService - signupBusiness', () => {
         if (ref?.__kind === 'query') {
           const empty = (() => {
             if (
-              ref.collection === Collections.BUSINESSES &&
+              ref.collection === Collections.COMPANIES &&
               ref.field === 'email'
             ) {
-              return !firestoreState.businessEmailExists;
+              return !firestoreState.companyEmailExists;
             }
 
             if (ref.collection === Collections.USERS && ref.field === 'email') {
@@ -62,10 +62,10 @@ describe('AuthService - signupBusiness', () => {
             }
 
             if (
-              ref.collection === Collections.BUSINESSES &&
+              ref.collection === Collections.COMPANIES &&
               ref.field === 'cnpj'
             ) {
-              return !firestoreState.businessCnpjExists;
+              return !firestoreState.companyCnpjExists;
             }
 
             return true;
@@ -106,9 +106,9 @@ describe('AuthService - signupBusiness', () => {
     firestoreState = {
       emailLockExists: false,
       cnpjLockExists: false,
-      businessEmailExists: false,
+      companyEmailExists: false,
       userEmailExists: false,
-      businessCnpjExists: false,
+      companyCnpjExists: false,
     };
     tokenDocs = new Set<string>();
 
@@ -127,8 +127,8 @@ describe('AuthService - signupBusiness', () => {
     service = module.get<AuthService>(AuthService);
   });
 
-  it('deve criar business com sucesso e normalizar email/cnpj', async () => {
-    firebaseMock.createUser.mockResolvedValue({ uid: 'business-uid' });
+  it('deve criar company com sucesso e normalizar email/cnpj', async () => {
+    firebaseMock.createUser.mockResolvedValue({ uid: 'company-uid' });
     firebaseMock.setCustomUserClaims.mockResolvedValue(undefined);
     firebaseMock.createDocument.mockResolvedValue(undefined);
     firebaseMock.signInWithEmailAndPassword.mockResolvedValue({
@@ -137,7 +137,7 @@ describe('AuthService - signupBusiness', () => {
       expiresIn: '3600',
     });
 
-    const result = await service.signupBusiness({
+    const result = await service.signupCompany({
       name: 'Cafe Centro',
       legalName: 'Cafe Centro LTDA',
       cnpj: '12.345.678/0001-95',
@@ -163,12 +163,12 @@ describe('AuthService - signupBusiness', () => {
       displayName: 'Cafe Centro',
     });
     expect(firebaseMock.setCustomUserClaims).toHaveBeenCalledWith(
-      'business-uid',
-      { role: Role.BUSINESS },
+      'company-uid',
+      { role: Role.COMPANY },
     );
     expect(firebaseMock.createDocument).toHaveBeenCalledWith(
-      Collections.BUSINESSES,
-      'business-uid',
+      Collections.COMPANIES,
+      'company-uid',
       expect.objectContaining({
         name: 'Cafe Centro',
         legalName: 'Cafe Centro LTDA',
@@ -181,20 +181,20 @@ describe('AuthService - signupBusiness', () => {
       }),
     );
     expect(result.user).toEqual({
-      uid: 'business-uid',
+      uid: 'company-uid',
       email: 'contato@cafecentro.com.br',
       name: 'Cafe Centro',
-      role: Role.BUSINESS,
+      role: Role.COMPANY,
     });
 
     expect(tokenDocs.size).toBe(2);
   });
 
   it('deve retornar 409 quando cnpj ja estiver cadastrado', async () => {
-    firestoreState.businessCnpjExists = true;
+    firestoreState.companyCnpjExists = true;
 
     await expect(
-      service.signupBusiness({
+      service.signupCompany({
         name: 'Cafe Centro',
         legalName: 'Cafe Centro LTDA',
         cnpj: '12345678000195',
@@ -219,7 +219,7 @@ describe('AuthService - signupBusiness', () => {
     firestoreState.userEmailExists = true;
 
     await expect(
-      service.signupBusiness({
+      service.signupCompany({
         name: 'Cafe Centro',
         legalName: 'Cafe Centro LTDA',
         cnpj: '12345678000195',
@@ -241,7 +241,7 @@ describe('AuthService - signupBusiness', () => {
   });
 
   it('deve liberar locks quando signup falha apos reservar unicidade', async () => {
-    firebaseMock.createUser.mockResolvedValue({ uid: 'business-uid' });
+    firebaseMock.createUser.mockResolvedValue({ uid: 'company-uid' });
     firebaseMock.setCustomUserClaims.mockResolvedValue(undefined);
     firebaseMock.createDocument.mockResolvedValue(undefined);
     firebaseMock.signInWithEmailAndPassword.mockRejectedValue(
@@ -249,7 +249,7 @@ describe('AuthService - signupBusiness', () => {
     );
 
     await expect(
-      service.signupBusiness({
+      service.signupCompany({
         name: 'Cafe Centro',
         legalName: 'Cafe Centro LTDA',
         cnpj: '12345678000195',

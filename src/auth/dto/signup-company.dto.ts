@@ -52,12 +52,12 @@ class AddressDto {
 }
 
 export class SignupCompanyDto {
-  @ApiProperty({ example: 'Cafeteria do Bairro' })
+  @ApiProperty({ example: 'Teatro Municipal' })
   @IsString()
   @IsNotEmpty()
   name: string;
 
-  @ApiProperty({ example: 'Cafeteria do Bairro LTDA' })
+  @ApiProperty({ example: 'Teatro Municipal LTDA' })
   @IsString()
   @IsNotEmpty()
   legalName: string;
@@ -68,7 +68,7 @@ export class SignupCompanyDto {
   @Matches(/^\d{14}$/, { message: 'cnpj deve conter 14 dígitos numéricos' })
   cnpj: string;
 
-  @ApiPropertyOptional({ example: 'https://cafeteriadobairro.com.br' })
+  @ApiPropertyOptional({ example: 'https://teatromunicipal.com.br' })
   @IsOptional()
   @IsUrl({}, { message: 'website deve ser uma URL válida' })
   website?: string;
@@ -89,7 +89,7 @@ export class SignupCompanyDto {
   @IsPhoneNumber('BR')
   contact: string;
 
-  @ApiProperty({ example: 'contato@cafebairro.com' })
+  @ApiProperty({ example: 'contato@teatromunicipal.com' })
   @IsEmail()
   email: string;
 
