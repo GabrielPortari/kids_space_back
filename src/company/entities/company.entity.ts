@@ -1,7 +1,7 @@
 import * as admin from 'firebase-admin';
 import { Company } from '../../models/company.model';
 import { BaseModel } from '../../models/base.model';
-import { Collections } from 'src/constants/collections';
+import { Collections } from '../../constants/collections';
 
 export class CompanyEntity {
   static collection = Collections.COMPANIES;

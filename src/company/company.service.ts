@@ -5,11 +5,11 @@ import {
 } from '@nestjs/common';
 import { UpdateCompanyDto } from './dto/update-company.dto';
 import { CompanyEntity } from './entities/company.entity';
-import { Company } from 'src/models/company.model';
-import { FindCompaniesQueryDto } from 'src/company/dto/find-companies-query.dto';
-import { UpdateCompanyAdminDto } from 'src/company/dto/update-company-admin.dto';
-import { Address } from 'src/models/address.model';
-import { Role } from 'src/constants/roles';
+import { Company } from '../models/company.model';
+import { FindCompaniesQueryDto } from './dto/find-companies-query.dto';
+import { UpdateCompanyAdminDto } from './dto/update-company-admin.dto';
+import { Address } from '../models/address.model';
+import { Role } from '../constants/roles';
 
 @Injectable()
 export class CompanyService {

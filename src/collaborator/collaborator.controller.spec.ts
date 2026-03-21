@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CollaboratorController } from './collaborator.controller';
 import { CollaboratorService } from './collaborator.service';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 
 describe('CollaboratorController', () => {
   let controller: CollaboratorController;

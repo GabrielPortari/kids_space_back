@@ -1,13 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AuthService } from './auth.service';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import {
   BadRequestException,
   ConflictException,
   UnauthorizedException,
 } from '@nestjs/common';
-import { Role } from 'src/constants/roles';
-import { Collections } from 'src/constants/collections';
+import { Role } from '../constants/roles';
+import { Collections } from '../constants/collections';
 import * as admin from 'firebase-admin';
 
 describe('AuthService - signupCompany', () => {

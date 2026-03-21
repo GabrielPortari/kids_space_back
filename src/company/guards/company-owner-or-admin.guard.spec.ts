@@ -1,6 +1,6 @@
 import { ExecutionContext } from '@nestjs/common';
 import { CompanyOwnerOrAdminGuard } from './company-owner-or-admin.guard';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../../firebase/firebase.service';
 
 describe('CompanyOwnerOrAdminGuard', () => {
   const verifyIdToken = jest.fn();

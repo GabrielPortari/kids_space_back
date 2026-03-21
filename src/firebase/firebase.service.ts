@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
 import {
-  AppBadRequestException,
-  AppServiceUnavailableException,
-} from '../exceptions';
+  BadRequestException,
+  Injectable,
+  ServiceUnavailableException,
+} from '@nestjs/common';
 import { CreateRequest } from 'firebase-admin/lib/auth/auth-config';
 import { UserRecord } from 'firebase-admin/lib/auth/user-record';
 import * as firebaseAdmin from 'firebase-admin';
@@ -102,9 +102,9 @@ export class FirebaseService {
 
   private handleFirebaseAuthError(error: any) {
     if (error?.code && String(error.code).startsWith('auth/')) {
-      throw new AppBadRequestException(error.message);
+      throw new BadRequestException(error.message);
     }
-    throw new AppServiceUnavailableException(
+    throw new ServiceUnavailableException(
       error.message || 'Firebase auth error',
     );
   }
@@ -119,9 +119,9 @@ export class FirebaseService {
           TOKEN_EXPIRED: 'Token expired',
           USER_DISABLED: 'User disabled',
         }[messageKey] ?? messageKey;
-      throw new AppBadRequestException(message);
+      throw new BadRequestException(message);
     }
-    throw new AppServiceUnavailableException(
+    throw new ServiceUnavailableException(
       error.message || 'External API error',
     );
   }

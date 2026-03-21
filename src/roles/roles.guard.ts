@@ -5,7 +5,7 @@ import {
   mixin,
   Type,
 } from '@nestjs/common';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 
 export function RolesGuard(...allowedRoles: string[]): Type<CanActivate> {
   @Injectable()

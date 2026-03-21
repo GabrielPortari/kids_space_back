@@ -7,7 +7,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 import { LoginDto } from './dto/login.dto';
 import { IdToken } from './dto/id-token.decorator';
 import { RefreshTokenDto } from './dto/refresh-token.dto';

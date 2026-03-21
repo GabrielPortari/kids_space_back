@@ -8,11 +8,11 @@ import {
 } from '@nestjs/common';
 import { SignupCompanyDto } from './dto/signup-company.dto';
 import * as admin from 'firebase-admin';
-import { CompanyEntity } from 'src/company/entities/company.entity';
-import { Company } from 'src/models/company.model';
-import { Address } from 'src/models/address.model';
-import { Collections } from 'src/constants/collections';
-import { Role } from 'src/constants/roles';
+import { CompanyEntity } from '../company/entities/company.entity';
+import { Company } from '../models/company.model';
+import { Address } from '../models/address.model';
+import { Collections } from '../constants/collections';
+import { Role } from '../constants/roles';
 
 @Injectable()
 export class AuthService {

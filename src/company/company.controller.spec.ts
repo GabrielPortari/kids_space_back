@@ -1,7 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { CompanyController } from './company.controller';
 import { CompanyService } from './company.service';
-import { FirebaseService } from 'src/firebase/firebase.service';
+import { FirebaseService } from '../firebase/firebase.service';
 
 describe('CompanyController', () => {
   let controller: CompanyController;

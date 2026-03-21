@@ -12,12 +12,12 @@ import {
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CompanyService } from './company.service';
 import { UpdateCompanyDto } from './dto/update-company.dto';
-import { Role } from 'src/constants/roles';
-import { RolesGuard } from 'src/roles/roles.guard';
-import { IdToken } from 'src/auth/dto/id-token.decorator';
-import { FirebaseService } from 'src/firebase/firebase.service';
-import { UpdateCompanyAdminDto } from 'src/company/dto/update-company-admin.dto';
-import { FindCompaniesQueryDto } from 'src/company/dto/find-companies-query.dto';
+import { Role } from '../constants/roles';
+import { RolesGuard } from '../roles/roles.guard';
+import { IdToken } from '../auth/dto/id-token.decorator';
+import { FirebaseService } from '../firebase/firebase.service';
+import { UpdateCompanyAdminDto } from './dto/update-company-admin.dto';
+import { FindCompaniesQueryDto } from './dto/find-companies-query.dto';
 import { CompanyOwnerOrAdminGuard } from './guards/company-owner-or-admin.guard';
 
 @Controller('v2/companies')

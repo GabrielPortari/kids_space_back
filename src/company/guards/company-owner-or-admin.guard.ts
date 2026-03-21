@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
-import { FirebaseService } from 'src/firebase/firebase.service';
-import { Role } from 'src/constants/roles';
+import { FirebaseService } from '../../firebase/firebase.service';
+import { Role } from '../../constants/roles';
 
 @Injectable()
 export class CompanyOwnerOrAdminGuard implements CanActivate {
