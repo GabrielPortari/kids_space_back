@@ -113,7 +113,7 @@ export class AuthService {
         active: false,
       } as any);
 
-      const companyData = CompanyEntity.toFirestore(companyModel as Company);
+      const companyData = CompanyEntity.toFirestore(companyModel);
 
       try {
         await this.firebaseService.createDocument(

@@ -39,7 +39,7 @@ export class AuthController {
     return this.authService.login(loginDto);
   }
 
-  @Post('signup/business')
+  @Post('signup')
   @ApiOperation({ summary: 'Registra um novo negócio' })
   @ApiBody({
     type: SignupCompanyDto,

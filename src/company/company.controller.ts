@@ -1,10 +1,12 @@
 import {
+  BadRequestException,
   Controller,
   Get,
   Body,
   Patch,
   Param,
-  Delete,
+  Query,
+  Req,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
@@ -14,10 +16,11 @@ import { Role } from 'src/constants/roles';
 import { RolesGuard } from 'src/roles/roles.guard';
 import { IdToken } from 'src/auth/dto/id-token.decorator';
 import { FirebaseService } from 'src/firebase/firebase.service';
+import { UpdateCompanyAdminDto } from 'src/company/dto/update-company-admin.dto';
+import { FindCompaniesQueryDto } from 'src/company/dto/find-companies-query.dto';
 import { CompanyOwnerOrAdminGuard } from './guards/company-owner-or-admin.guard';
-import { UpdateCompanyComplianceDto } from './dto/update-company-compliance.dto';
 
-@Controller('company')
+@Controller('v2/companies')
 export class CompanyController {
   constructor(
     private readonly companyService: CompanyService,
@@ -27,9 +30,13 @@ export class CompanyController {
   @Get('me')
   @UseGuards(RolesGuard(Role.COMPANY))
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Obtém os dados do negócio autenticado' })
-  @ApiResponse({ status: 200, description: 'Dados do negócio autenticado.' })
+  @ApiOperation({ summary: 'Obtem os dados da company autenticada' })
+  @ApiResponse({ status: 200, description: 'Dados da company autenticada.' })
   async findMe(@IdToken() token: string) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
     const { uid } = await this.firebaseService.verifyIdToken(token, true);
     return this.companyService.findOne(uid);
   }
@@ -37,62 +44,57 @@ export class CompanyController {
   @Patch('me')
   @UseGuards(RolesGuard(Role.COMPANY))
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualiza os dados do negócio autenticado' })
-  @ApiResponse({ status: 200, description: 'Negócio atualizado com sucesso.' })
+  @ApiOperation({ summary: 'Atualiza os dados da company autenticada' })
+  @ApiResponse({ status: 200, description: 'Company atualizada com sucesso.' })
   async updateMe(
     @IdToken() token: string,
     @Body() updateCompanyDto: UpdateCompanyDto,
   ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
     const { uid } = await this.firebaseService.verifyIdToken(token, true);
-    return this.companyService.update(uid, updateCompanyDto);
+    return this.companyService.updateMe(uid, updateCompanyDto);
   }
 
   @Get()
   @UseGuards(RolesGuard(Role.ADMIN))
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Lista todos os negócios (admin somente)' })
-  @ApiResponse({ status: 200, description: 'Lista de negócios retornada.' })
-  findAll() {
-    return this.companyService.findAll();
+  @ApiOperation({ summary: 'Lista companies (admin)' })
+  @ApiResponse({ status: 200, description: 'Lista de companies retornada.' })
+  findAll(@Query() query: FindCompaniesQueryDto) {
+    return this.companyService.findAll(query);
   }
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Obtém os dados de um negócio pelo ID' })
-  @ApiResponse({ status: 200, description: 'Dados do negócio retornados.' })
-  findOne(@Param('id') id: string) {
-    return this.companyService.findOne(id);
-  }
-
-  @Patch(':id')
+  @Get(':companyId')
   @UseGuards(RolesGuard(Role.COMPANY, Role.ADMIN), CompanyOwnerOrAdminGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualiza um negócio pelo ID' })
-  @ApiResponse({ status: 200, description: 'Negócio atualizado com sucesso.' })
-  update(@Param('id') id: string, @Body() updateCompanyDto: UpdateCompanyDto) {
-    return this.companyService.update(id, updateCompanyDto);
+  @ApiOperation({ summary: 'Obtem dados de uma company por companyId' })
+  @ApiResponse({ status: 200, description: 'Dados da company retornados.' })
+  findOne(@Param('companyId') companyId: string) {
+    return this.companyService.findOne(companyId);
   }
 
-  @Patch(':id/compliance')
-  @UseGuards(RolesGuard(Role.ADMIN))
+  @Patch(':companyId')
+  @UseGuards(RolesGuard(Role.COMPANY, Role.ADMIN), CompanyOwnerOrAdminGuard)
   @ApiBearerAuth()
-  @ApiOperation({ summary: 'Atualiza campos de compliance do negócio (admin)' })
-  @ApiResponse({
-    status: 200,
-    description: 'Campos de compliance atualizados com sucesso.',
-  })
-  updateCompliance(
-    @Param('id') id: string,
-    @Body() updateComplianceDto: UpdateCompanyComplianceDto,
+  @ApiOperation({ summary: 'Atualiza dados de uma company por companyId' })
+  @ApiResponse({ status: 200, description: 'Company atualizada com sucesso.' })
+  updateByCompanyId(
+    @Req() request: any,
+    @Param('companyId') companyId: string,
+    @Body() updateCompanyDto: UpdateCompanyAdminDto,
   ) {
-    return this.companyService.updateCompliance(id, updateComplianceDto);
-  }
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
 
-  @Delete(':id')
-  @UseGuards(RolesGuard(Role.ADMIN))
-  @ApiBearerAuth()
-  @ApiOperation({ summary: 'Remove um negócio pelo ID' })
-  @ApiResponse({ status: 200, description: 'Negócio removido com sucesso.' })
-  remove(@Param('id') id: string) {
-    return this.companyService.remove(id);
+    return this.companyService.updateByActor(
+      companyId,
+      updateCompanyDto,
+      userRoles,
+    );
   }
 }

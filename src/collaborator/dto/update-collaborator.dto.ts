@@ -1,4 +1,10 @@
-import { PartialType } from '@nestjs/swagger';
+import { OmitType, PartialType } from '@nestjs/swagger';
 import { CreateCollaboratorDto } from './create-collaborator.dto';
 
-export class UpdateCollaboratorDto extends PartialType(CreateCollaboratorDto) {}
+class UpdateCollaboratorBaseDto extends OmitType(CreateCollaboratorDto, [
+  'companyId',
+] as const) {}
+
+export class UpdateCollaboratorDto extends PartialType(
+  UpdateCollaboratorBaseDto,
+) {}
