@@ -59,13 +59,18 @@ Observacao de regra de negocio no Parent v2:
 - PATCH /admin/:id - Atualiza admin por id.
 - DELETE /admin/:id - Remove admin por id.
 
-## Attendance (/attendance)
+## Attendance v2 (/v2/attendance)
 
-- POST /attendance - Cria registro de attendance (estrutura basica CRUD gerada).
-- GET /attendance - Lista registros.
-- GET /attendance/:id - Busca registro por id.
-- PATCH /attendance/:id - Atualiza registro por id.
-- DELETE /attendance/:id - Remove registro por id.
+- POST /v2/attendance/checkin - Realiza check-in de crianca (roles: collaborator, company, admin) - 201.
+- POST /v2/attendance/checkout - Realiza checkout de crianca (roles: collaborator, company, admin) - 200.
+- GET /v2/attendance - Lista atendimentos (roles: collaborator, company, admin).
+- GET /v2/attendance/:attendanceId - Busca atendimento por id (roles: collaborator, company, admin + AttendanceOwnerOrCompanyGuard).
+- PATCH /v2/attendance/:attendanceId - Atualiza atendimento por id (roles: collaborator, company, admin + AttendanceOwnerOrCompanyGuard).
+- DELETE /v2/attendance/:attendanceId - Remove atendimento por id (roles: collaborator, company, admin + AttendanceOwnerOrCompanyGuard) - 204.
+
+Observacao de regra de negocio no Attendance v2:
+
+- Checkout exige confirmacao do CPF de um responsavel vinculado a crianca.
 
 ## Children v2 (/v2/children)
 

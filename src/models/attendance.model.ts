@@ -1,6 +1,6 @@
 import { BaseModel } from './base.model';
 
-enum AttendanceType {
+export enum AttendanceType {
   CHECKIN = 'checkin',
   CHECKOUT = 'checkout',
 }
