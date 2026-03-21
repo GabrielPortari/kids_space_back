@@ -1,77 +1,89 @@
-# Relatório de Endpoints - kids_space_back
+# Relatorio de Endpoints - kids_space_back
 
-Resumo dos endpoints disponíveis no backend, rota completa, método HTTP e funcionalidade.
+Resumo dos endpoints atuais com base nos controllers existentes em src.
 
 ---
 
-**App**
+## App
 
-- GET / — Retorna texto de boas-vindas / health-check (AppService.getHello)
+- GET / - Health-check simples (AppService.getHello).
 
-**Companies (`/companies`)**
+## Auth (/auth)
 
-- POST /companies — Registra nova empresa (roles: master, systemAdmin) — 201
-- PUT /companies/:id — Atualiza empresa (roles: master, systemAdmin, companyAdmin)
-- GET /companies/:id — Recupera empresa por id (roles: master, systemAdmin, companyAdmin, collaborator)
-- GET /companies — Recupera todas as empresas (público)
-- DELETE /companies/:id — Remove empresa (roles: master, systemAdmin) — 204
+- POST /auth/login - Login com e-mail e senha (guard: AuthRateLimitGuard) - 200.
+- POST /auth/signup - Cadastro de empresa e usuario principal - 201.
+- POST /auth/refresh-auth - Renovacao de token (guard: AuthRateLimitGuard) - 200.
+- POST /auth/recover-password - Disparo de recuperacao de senha (guard: AuthRateLimitGuard) - 200.
+- POST /auth/logout - Logout (guard: AuthGuard + bearer token) - 204.
+- GET /auth/me - Dados do usuario autenticado (guard: AuthGuard + bearer token) - 200.
 
-**Admin (`/admin`)**
+## Company v2 (/v2/companies)
 
-- POST /admin — Cria um novo administrador do sistema (roles: master) — 201
-- GET /admin/:id — Obtém administrador por ID (roles: master)
-- PUT /admin/:id — Atualiza administrador por ID (roles: master)
-- DELETE /admin/:id — Deleta administrador por ID (roles: master)
+- GET /v2/companies/me - Dados da company autenticada (roles: company).
+- PATCH /v2/companies/me - Atualiza company autenticada (roles: company).
+- GET /v2/companies - Lista companies (roles: admin).
+- GET /v2/companies/:companyId - Busca company por id (roles: company, admin + CompanyOwnerOrAdminGuard).
+- PATCH /v2/companies/:companyId - Atualiza company por id (roles: company, admin + CompanyOwnerOrAdminGuard).
 
-**Auth (`/auth`)**
+## Collaborator v2 (/v2/collaborators)
 
-- POST /auth/login — Realiza login (recebe `LoginDto`) — 200
-- POST /auth/signup - Realiza o registro de uma company (recebe `SignUpDto`) - 201
-- POST /auth/refresh-auth — Renova token (recebe `RefreshTokenDto`) — 200
-- POST /auth/logout — Finaliza sessão (requires bearer + AuthGuard) — 204
-- GET /auth/me — Retorna dados do usuário autenticado (requires bearer + AuthGuard)
+- POST /v2/collaborators - Cria collaborator (roles: company, admin) - 201.
+- GET /v2/collaborators - Lista collaborators (roles: company, admin).
+- GET /v2/collaborators/:collaboratorId - Busca collaborator por id (roles: company, admin + CollaboratorOwnerOrAdminGuard).
+- PATCH /v2/collaborators/:collaboratorId - Atualiza collaborator (roles: company, admin + CollaboratorOwnerOrAdminGuard).
+- DELETE /v2/collaborators/:collaboratorId - Remove collaborator (roles: company, admin + CollaboratorOwnerOrAdminGuard) - 204.
 
-**Attendance (`/attendance`)**
+## Parent v2 (/v2/parents)
 
-- POST /attendance/checkin — Realiza checkin de uma criança (roles: collaborator, company, admin) — 201
-- POST /attendance/checkout — Realiza checkout de uma criança (roles: collaborator, company, admin) — 201
-- GET /attendance/company/:companyId — Obtém registros de atendimento por empresa (roles: collaborator, company, admin)
-- GET /attendance/company/:companyId/last-checkin — Último checkin da empresa (roles: collaborator, companyAdmin, systemAdmin, master)
-- GET /attendance/company/:companyId/last-checkout — Último checkout da empresa (roles: collaborator, companyAdmin, systemAdmin, master)
-- GET /attendance/company/:companyId/last-10 — 10 últimos atendimentos (roles: collaborator, companyAdmin, systemAdmin, master)
-- GET /attendance/company/:companyId/active-checkins — Checkins ativos (sem checkout) (roles: collaborator, companyAdmin, systemAdmin, master)
-- GET /attendance/company/:companyId/between?from=&to= — Busca atendimentos entre duas datas (roles: companyAdmin, systemAdmin, master)
-- GET /attendance/:id — Obtém um registro de atendimento por ID (roles: collaborator, companyAdmin, systemAdmin, master)
+- POST /v2/parents - Cria parent/responsavel (roles: collaborator, company, admin) - 201.
+- GET /v2/parents - Lista parents/responsaveis (roles: collaborator, company, admin).
+- GET /v2/parents/:parentId - Busca parent por id (roles: collaborator, company, admin + ParentOwnerOrCompanyGuard).
+- PATCH /v2/parents/:parentId - Atualiza parent (roles: collaborator, company, admin + ParentOwnerOrCompanyGuard).
+- DELETE /v2/parents/:parentId - Remove parent (roles: collaborator, company, admin + ParentOwnerOrCompanyGuard) - 204.
 
-**Parent (`/parents`)**
+Observacao de regra de negocio no Parent v2:
 
-- POST /parents/register — Registra novo responsável (roles: collaborator, company, admin) — 201
-  - Observação: `systemAdmin` pode criar para qualquer empresa desde que informe `companyId` no corpo; caso contrário são aplicadas regras para atribuir `companyId` do collaborator autenticado.
-- GET /parents/:id — Recupera usuário por id (roles: collaborator, companyAdmin, systemAdmin)
-- GET /parents/company/:companyId — Recupera todos os usuários de uma empresa (roles: collaborator, companyAdmin, systemAdmin, master)
-- PUT /parents/:id — Atualiza usuário (roles: collaborator, companyAdmin, systemAdmin)
-- DELETE /parents/:id — Remove usuário (roles: collaborator, companyAdmin, systemAdmin) — 204
-- POST /parents/:parentId/child — Cria criança para um usuário (parentId) (roles: collaborator, companyAdmin, systemAdmin)
-  - Observação: contém validações de autorização (systemAdmin sempre, ou pai/collaborator da mesma empresa). Sanitiza `companyId` e `responsibleUserIds` do payload.
+- Acesso de alteracao/leitura por recurso usa companyId do parent para validar ownership no guard.
 
-**Roles (`/roles`)**
+## Roles (/roles)
 
-- GET /roles/collaborator — Endpoint para colaboradores (roles: collaborator, companyAdmin, systemAdmin, master)
-- GET /roles/company — Endpoint para administradores de empresa (roles: companyAdmin, systemAdmin, master)
-- GET /roles/admin — Endpoint para admin (roles: admin)
+- GET /roles/collaborator - Endpoint de validacao para roles collaborator/company/admin.
+- GET /roles/company - Endpoint de validacao para roles company/admin.
+- GET /roles/admin - Endpoint de validacao para role admin.
 
-**Collaborator (`/collaborator`)**
+## Admin (/admin)
 
-- GET /collaborator/:id — Recupera colaborador por id (roles: master, systemAdmin, companyAdmin, collaborator)
-- GET /collaborator/company/:companyId — Recupera todos os colaboradores de uma empresa (roles: master, systemAdmin, companyAdmin, collaborator)
-- POST /collaborator — Registra novo colaborador (roles: companyAdmin, systemAdmin, master) — 201
-  - Observação: systemAdmin/master pode criar para qualquer empresa passando `companyId`; companyAdmin cria apenas para sua empresa.
-- PUT /collaborator/:id — Atualiza colaborador (roles: master, systemAdmin, companyAdmin)
-- DELETE /collaborator/:id — Remove colaborador (roles: master, systemAdmin, companyAdmin) — 204
+- POST /admin - Cria admin - 201.
+- GET /admin - Lista admins.
+- GET /admin/:id - Busca admin por id.
+- PATCH /admin/:id - Atualiza admin por id.
+- DELETE /admin/:id - Remove admin por id.
 
-**Children (`/children`)**
+## Attendance (/attendance)
 
-- GET /children/:id — Recupera criança por id (roles: collaborator, companyAdmin, systemAdmin)
-- GET /children/company/:companyId — Recupera crianças de uma empresa (roles: collaborator, companyAdmin, systemAdmin)
-- PUT /children/:id — Atualiza dados da criança (roles: collaborator, companyAdmin, systemAdmin)
-- DELETE /children/:id — Remove uma criança (roles: collaborator, companyAdmin, systemAdmin) — 204
+- POST /attendance - Cria registro de attendance (estrutura basica CRUD gerada).
+- GET /attendance - Lista registros.
+- GET /attendance/:id - Busca registro por id.
+- PATCH /attendance/:id - Atualiza registro por id.
+- DELETE /attendance/:id - Remove registro por id.
+
+## Children v2 (/v2/children)
+
+- POST /v2/children - Cria crianca (roles: collaborator, company, admin) - 201.
+- GET /v2/children - Lista criancas (roles: collaborator, company, admin).
+- GET /v2/children/:childId - Busca crianca por id (roles: collaborator, company, admin + ChildOwnerOrCompanyGuard).
+- PATCH /v2/children/:childId - Atualiza crianca (roles: collaborator, company, admin + ChildOwnerOrCompanyGuard).
+- DELETE /v2/children/:childId - Remove crianca (roles: collaborator, company, admin + ChildOwnerOrCompanyGuard) - 204.
+
+Observacao de regra de negocio no Children v2:
+
+- Collaborator/company so podem alterar recursos da propria company (comparacao por companyId no guard).
+
+---
+
+## Status de Testes
+
+Ultima execucao registrada:
+
+- Test Suites: 19 passed, 19 total.
+- Tests: 33 passed, 33 total.

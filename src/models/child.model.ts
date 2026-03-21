@@ -8,6 +8,7 @@ export class User extends BaseModel {
   address?: Address;
   email?: string;
   contact?: string;
+  companyId?: string;
 
   constructor(init?: Partial<User>) {
     super(init);
