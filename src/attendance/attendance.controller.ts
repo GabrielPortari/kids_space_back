@@ -47,7 +47,9 @@ export class AttendanceController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
@@ -55,7 +57,7 @@ export class AttendanceController {
 
     return this.attendanceService.checkIn(
       createAttendanceDto,
-      uid,
+      actorCompanyId,
       uid,
       userRoles,
     );
@@ -78,13 +80,20 @@ export class AttendanceController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.attendanceService.checkOut(checkoutDto, uid, uid, userRoles);
+    return this.attendanceService.checkOut(
+      checkoutDto,
+      actorCompanyId,
+      uid,
+      userRoles,
+    );
   }
 
   @Get()
@@ -101,13 +110,15 @@ export class AttendanceController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.attendanceService.findAll(uid, query, userRoles);
+    return this.attendanceService.findAll(actorCompanyId, query, userRoles);
   }
 
   @Get(':attendanceId')
@@ -143,7 +154,9 @@ export class AttendanceController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
@@ -152,7 +165,7 @@ export class AttendanceController {
     return this.attendanceService.update(
       attendanceId,
       updateAttendanceDto,
-      uid,
+      actorCompanyId,
       userRoles,
     );
   }
@@ -178,12 +191,18 @@ export class AttendanceController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.attendanceService.delete(attendanceId, uid, userRoles);
+    return this.attendanceService.delete(
+      attendanceId,
+      actorCompanyId,
+      userRoles,
+    );
   }
 }

@@ -45,7 +45,9 @@ export class CollaboratorController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
 
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
@@ -54,7 +56,7 @@ export class CollaboratorController {
 
     return this.collaboratorService.create(
       createCollaboratorDto,
-      uid,
+      actorCompanyId,
       userRoles,
     );
   }
@@ -76,14 +78,16 @@ export class CollaboratorController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
 
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.collaboratorService.findAll(uid, query, userRoles);
+    return this.collaboratorService.findAll(actorCompanyId, query, userRoles);
   }
 
   @Get(':collaboratorId')
@@ -122,7 +126,9 @@ export class CollaboratorController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
 
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
@@ -132,7 +138,7 @@ export class CollaboratorController {
     return this.collaboratorService.update(
       collaboratorId,
       updateCollaboratorDto,
-      uid,
+      actorCompanyId,
       userRoles,
     );
   }
@@ -158,13 +164,19 @@ export class CollaboratorController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
 
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.collaboratorService.delete(collaboratorId, uid, userRoles);
+    return this.collaboratorService.delete(
+      collaboratorId,
+      actorCompanyId,
+      userRoles,
+    );
   }
 }

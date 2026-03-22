@@ -4,6 +4,7 @@ export class Collections {
   static readonly COLLABORATORS = 'collaborators';
   static readonly USERS = 'users';
   static readonly ATTENDANCES = 'attendances';
+  static readonly ATTENDANCE_ACTIVE_LOCKS = 'attendance_active_locks';
   static readonly CHILDREN = 'children';
   static readonly TOKENS = 'tokens';
 

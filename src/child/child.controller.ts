@@ -45,13 +45,15 @@ export class ChildController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.childService.create(createChildDto, uid, userRoles);
+    return this.childService.create(createChildDto, actorCompanyId, userRoles);
   }
 
   @Get()
@@ -68,13 +70,15 @@ export class ChildController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.childService.findAll(uid, query, userRoles);
+    return this.childService.findAll(actorCompanyId, query, userRoles);
   }
 
   @Get(':childId')
@@ -107,13 +111,20 @@ export class ChildController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.childService.update(childId, updateChildDto, uid, userRoles);
+    return this.childService.update(
+      childId,
+      updateChildDto,
+      actorCompanyId,
+      userRoles,
+    );
   }
 
   @Delete(':childId')
@@ -134,12 +145,14 @@ export class ChildController {
       throw new BadRequestException('id token is required');
     }
 
-    const { uid } = await this.firebaseService.verifyIdToken(token, true);
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
     const userRoles = [
       ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
       ...(request?.user?.role ? [request.user.role] : []),
     ];
 
-    return this.childService.delete(childId, uid, userRoles);
+    return this.childService.delete(childId, actorCompanyId, userRoles);
   }
 }
