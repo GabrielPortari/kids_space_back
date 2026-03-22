@@ -9,7 +9,7 @@ import { CheckoutAttendanceDto } from './dto/checkout-attendance.dto';
 import { AttendanceEntity } from './entities/attendance.entity';
 import { Attendance, AttendanceType } from '../models/attendance.model';
 import { FindAttendancesQueryDto } from './dto/find-attendances-query.dto';
-import { Role } from '../constants/roles';
+import { hasAdminPrivileges } from '../constants/roles';
 import { ChildEntity } from '../child/entities/child.entity';
 import { ParentEntity } from '../parent/entities/parent.entity';
 import { UpdateAttendanceAdminDto } from './dto/update-attendance-admin.dto';
@@ -22,7 +22,7 @@ export class AttendanceService {
     actorUid: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = createAttendanceDto.companyId?.trim();
 
     const targetCompanyId = this.resolveTargetCompanyId(
@@ -80,7 +80,7 @@ export class AttendanceService {
     actorUid: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = checkoutDto.companyId?.trim();
     const targetCompanyId = this.resolveTargetCompanyId(
       isAdmin,
@@ -136,7 +136,7 @@ export class AttendanceService {
     query: FindAttendancesQueryDto,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const queryCompanyId = query.companyId?.trim();
 
     let targetCompanyId = companyId;
@@ -208,7 +208,7 @@ export class AttendanceService {
 
     const attendance = AttendanceEntity.fromFirestore(doc);
 
-    if (companyId && actorRoles && !actorRoles.includes(Role.ADMIN)) {
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
       if (attendance.companyId !== companyId) {
         throw new NotFoundException('Attendance not found');
       }
@@ -223,7 +223,7 @@ export class AttendanceService {
     companyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const docRef = AttendanceEntity.docRef(attendanceId);
     const doc = await docRef.get();
 
@@ -256,7 +256,7 @@ export class AttendanceService {
   }
 
   async delete(attendanceId: string, companyId: string, actorRoles: string[]) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const doc = await AttendanceEntity.docRef(attendanceId).get();
 
     if (!doc.exists) {

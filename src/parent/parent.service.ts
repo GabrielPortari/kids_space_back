@@ -10,7 +10,7 @@ import { User } from '../models/parent.model';
 import { FindParentsQueryDto } from './dto/find-parents-query.dto';
 import { UpdateParentAdminDto } from './dto/update-parent-admin.dto';
 import { Address } from '../models/address.model';
-import { Role } from '../constants/roles';
+import { hasAdminPrivileges } from '../constants/roles';
 
 @Injectable()
 export class ParentService {
@@ -19,7 +19,7 @@ export class ParentService {
     actorCompanyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = createParentDto.companyId?.trim();
 
     let targetCompanyId: string;
@@ -66,7 +66,7 @@ export class ParentService {
     query: FindParentsQueryDto,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const queryCompanyId = query.companyId?.trim();
 
     let targetCompanyId = companyId;
@@ -119,7 +119,7 @@ export class ParentService {
 
     const parent = ParentEntity.fromFirestore(doc);
 
-    if (companyId && actorRoles && !actorRoles.includes(Role.ADMIN)) {
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
       if (parent.companyId !== companyId) {
         throw new NotFoundException('Parent not found');
       }
@@ -134,7 +134,7 @@ export class ParentService {
     companyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const docRef = ParentEntity.docRef(parentId);
     const doc = await docRef.get();
@@ -156,7 +156,7 @@ export class ParentService {
   }
 
   async delete(parentId: string, companyId: string, actorRoles: string[]) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const doc = await ParentEntity.docRef(parentId).get();
     if (!doc.exists) throw new NotFoundException('Parent not found');

@@ -1,6 +1,6 @@
 import { CanActivate, ExecutionContext, Injectable } from '@nestjs/common';
 import { FirebaseService } from '../../firebase/firebase.service';
-import { Role } from '../../constants/roles';
+import { hasAdminPrivileges } from '../../constants/roles';
 
 @Injectable()
 export class CompanyOwnerOrAdminGuard implements CanActivate {
@@ -30,7 +30,7 @@ export class CompanyOwnerOrAdminGuard implements CanActivate {
         ...((decoded as any).role ? [(decoded as any).role] : []),
       ];
 
-      if (roles.includes(Role.ADMIN)) {
+      if (hasAdminPrivileges(roles)) {
         return true;
       }
 

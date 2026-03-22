@@ -51,13 +51,13 @@ Observacao de regra de negocio no Parent v2:
 - GET /roles/company - Endpoint de validacao para roles company/admin.
 - GET /roles/admin - Endpoint de validacao para role admin.
 
-## Admin (/admin)
+## Admin v2 (/v2/admins)
 
-- POST /admin - Cria admin - 201.
-- GET /admin - Lista admins.
-- GET /admin/:id - Busca admin por id.
-- PATCH /admin/:id - Atualiza admin por id.
-- DELETE /admin/:id - Remove admin por id.
+- POST /v2/admins - Cria admin (roles: master) - 201.
+- GET /v2/admins - Lista admins (roles: admin, master).
+- GET /v2/admins/:adminId - Busca admin por id (roles: admin, master).
+- PATCH /v2/admins/:adminId - Atualiza admin por id (roles: admin, master).
+- DELETE /v2/admins/:adminId - Remove admin por id (roles: master) - 204.
 
 ## Attendance v2 (/v2/attendance)
 

@@ -9,7 +9,7 @@ import { Company } from '../models/company.model';
 import { FindCompaniesQueryDto } from './dto/find-companies-query.dto';
 import { UpdateCompanyAdminDto } from './dto/update-company-admin.dto';
 import { Address } from '../models/address.model';
-import { Role } from '../constants/roles';
+import { hasAdminPrivileges, Role } from '../constants/roles';
 
 @Injectable()
 export class CompanyService {
@@ -61,7 +61,10 @@ export class CompanyService {
     routeCompanyId: string,
     updateCompanyDto: UpdateCompanyAdminDto,
   ) {
-    return this.updateByActor(routeCompanyId, updateCompanyDto, [Role.ADMIN]);
+    return this.updateByActor(routeCompanyId, updateCompanyDto, [
+      Role.ADMIN,
+      Role.MASTER,
+    ]);
   }
 
   async updateByActor(
@@ -69,7 +72,7 @@ export class CompanyService {
     updateCompanyDto: UpdateCompanyAdminDto,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = updateCompanyDto.companyId?.trim();
 
     if (isAdmin) {

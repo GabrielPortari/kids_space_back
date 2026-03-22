@@ -10,7 +10,7 @@ import { User } from '../models/child.model';
 import { FindChildrenQueryDto } from './dto/find-children-query.dto';
 import { UpdateChildAdminDto } from './dto/update-child-admin.dto';
 import { Address } from '../models/address.model';
-import { Role } from '../constants/roles';
+import { hasAdminPrivileges } from '../constants/roles';
 
 @Injectable()
 export class ChildService {
@@ -19,7 +19,7 @@ export class ChildService {
     actorCompanyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = createChildDto.companyId?.trim();
 
     let targetCompanyId: string;
@@ -66,7 +66,7 @@ export class ChildService {
     query: FindChildrenQueryDto,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const queryCompanyId = query.companyId?.trim();
 
     let targetCompanyId = companyId;
@@ -128,7 +128,7 @@ export class ChildService {
 
     const child = ChildEntity.fromFirestore(doc);
 
-    if (companyId && actorRoles && !actorRoles.includes(Role.ADMIN)) {
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
       if (child.companyId !== companyId) {
         throw new NotFoundException('Child not found');
       }
@@ -143,7 +143,7 @@ export class ChildService {
     companyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const docRef = ChildEntity.docRef(childId);
     const doc = await docRef.get();
@@ -167,7 +167,7 @@ export class ChildService {
   }
 
   async delete(childId: string, companyId: string, actorRoles: string[]) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const doc = await ChildEntity.docRef(childId).get();
     if (!doc.exists) {

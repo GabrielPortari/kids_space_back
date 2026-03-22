@@ -10,7 +10,7 @@ import { Collaborator } from '../models/collaborator.model';
 import { FindCollaboratorsQueryDto } from './dto/find-collaborators-query.dto';
 import { UpdateCollaboratorAdminDto } from './dto/update-collaborator-admin.dto';
 import { Address } from '../models/address.model';
-import { Role } from '../constants/roles';
+import { hasAdminPrivileges } from '../constants/roles';
 
 @Injectable()
 export class CollaboratorService {
@@ -19,7 +19,7 @@ export class CollaboratorService {
     actorCompanyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const payloadCompanyId = createCollaboratorDto.companyId?.trim();
 
     let targetCompanyId: string;
@@ -65,7 +65,7 @@ export class CollaboratorService {
     query: FindCollaboratorsQueryDto,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
     const queryCompanyId = query.companyId?.trim();
 
     let targetCompanyId = companyId;
@@ -122,7 +122,7 @@ export class CollaboratorService {
 
     const collaborator = CollaboratorEntity.fromFirestore(doc);
 
-    if (companyId && actorRoles && !actorRoles.includes(Role.ADMIN)) {
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
       if (collaborator.companyId !== companyId) {
         throw new NotFoundException('Collaborator not found');
       }
@@ -137,7 +137,7 @@ export class CollaboratorService {
     companyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const docRef = CollaboratorEntity.docRef(collaboratorId);
     const doc = await docRef.get();
@@ -163,7 +163,7 @@ export class CollaboratorService {
     companyId: string,
     actorRoles: string[],
   ) {
-    const isAdmin = actorRoles.includes(Role.ADMIN);
+    const isAdmin = hasAdminPrivileges(actorRoles);
 
     const doc = await CollaboratorEntity.docRef(collaboratorId).get();
     if (!doc.exists) throw new NotFoundException('Collaborator not found');

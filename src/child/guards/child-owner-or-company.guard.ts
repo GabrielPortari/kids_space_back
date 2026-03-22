@@ -5,7 +5,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { FirebaseService } from '../../firebase/firebase.service';
-import { Role } from '../../constants/roles';
+import { hasAdminPrivileges } from '../../constants/roles';
 import { ChildEntity } from '../entities/child.entity';
 
 @Injectable()
@@ -36,7 +36,7 @@ export class ChildOwnerOrCompanyGuard implements CanActivate {
         ...((decoded as any).role ? [(decoded as any).role] : []),
       ];
 
-      if (roles.includes(Role.ADMIN)) {
+      if (hasAdminPrivileges(roles)) {
         return true;
       }
 

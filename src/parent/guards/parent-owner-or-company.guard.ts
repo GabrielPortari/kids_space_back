@@ -6,7 +6,7 @@ import {
   ForbiddenException,
 } from '@nestjs/common';
 import { FirebaseService } from '../../firebase/firebase.service';
-import { Role } from '../../constants/roles';
+import { hasAdminPrivileges } from '../../constants/roles';
 import { ParentEntity } from '../entities/parent.entity';
 
 @Injectable()
@@ -37,8 +37,8 @@ export class ParentOwnerOrCompanyGuard implements CanActivate {
         ...((decoded as any).role ? [(decoded as any).role] : []),
       ];
 
-      // Admin has full access
-      if (roles.includes(Role.ADMIN)) {
+      // Admin/master has full access
+      if (hasAdminPrivileges(roles)) {
         return true;
       }
 

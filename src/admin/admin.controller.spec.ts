@@ -1,6 +1,7 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { AdminController } from './admin.controller';
 import { AdminService } from './admin.service';
+import { FirebaseService } from '../firebase/firebase.service';
 
 describe('AdminController', () => {
   let controller: AdminController;
@@ -8,7 +9,15 @@ describe('AdminController', () => {
   beforeEach(async () => {
     const module: TestingModule = await Test.createTestingModule({
       controllers: [AdminController],
-      providers: [AdminService],
+      providers: [
+        AdminService,
+        {
+          provide: FirebaseService,
+          useValue: {
+            verifyIdToken: jest.fn(),
+          },
+        },
+      ],
     }).compile();
 
     controller = module.get<AdminController>(AdminController);

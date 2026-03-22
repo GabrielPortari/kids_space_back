@@ -6,8 +6,13 @@ import {
   Type,
 } from '@nestjs/common';
 import { FirebaseService } from '../firebase/firebase.service';
+import { Role } from '../constants/roles';
 
 export function RolesGuard(...allowedRoles: string[]): Type<CanActivate> {
+  const effectiveAllowedRoles = allowedRoles.includes(Role.ADMIN)
+    ? [...new Set([...allowedRoles, Role.MASTER])]
+    : allowedRoles;
+
   @Injectable()
   class RoleGuardMixin implements CanActivate {
     constructor(private readonly firebaseService: FirebaseService) {}
@@ -39,7 +44,9 @@ export function RolesGuard(...allowedRoles: string[]): Type<CanActivate> {
 
         request.user = decodedToken;
 
-        return allowedRoles.some((required) => userRoles.includes(required));
+        return effectiveAllowedRoles.some((required) =>
+          userRoles.includes(required),
+        );
       } catch {
         return false;
       }
