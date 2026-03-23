@@ -13,9 +13,18 @@ type RouteLimit = {
   maxByIdentity: number;
 };
 
+type AttemptBucket = {
+  timestamps: number[];
+  lastSeen: number;
+};
+
 @Injectable()
 export class AuthRateLimitGuard implements CanActivate {
-  private readonly attempts = new Map<string, number[]>();
+  private readonly attempts = new Map<string, AttemptBucket>();
+  private lastCleanupAt = 0;
+  private readonly cleanupIntervalMs = 60_000;
+  private readonly maxTrackers = 10_000;
+  private readonly maxWindowMs: number;
 
   private readonly routeLimits: Record<string, RouteLimit> = {
     'POST:/auth/login': {
@@ -35,6 +44,12 @@ export class AuthRateLimitGuard implements CanActivate {
     },
   };
 
+  constructor() {
+    this.maxWindowMs = Math.max(
+      ...Object.values(this.routeLimits).map((limit) => limit.windowMs),
+    );
+  }
+
   canActivate(context: ExecutionContext): boolean {
     const request = context.switchToHttp().getRequest();
     const routeKey = this.getRouteKey(request);
@@ -45,6 +60,8 @@ export class AuthRateLimitGuard implements CanActivate {
     }
 
     const now = Date.now();
+    this.maybeCleanup(now);
+
     const ipTracker = this.getClientIp(request);
     const identityTracker = this.getIdentityTracker(
       routeKey,
@@ -74,11 +91,60 @@ export class AuthRateLimitGuard implements CanActivate {
 
   private registerAttempt(key: string, now: number, windowMs: number): number {
     const threshold = now - windowMs;
-    const current = this.attempts.get(key) ?? [];
-    const valid = current.filter((ts) => ts >= threshold);
+    const current = this.attempts.get(key);
+    const valid = (current?.timestamps ?? []).filter((ts) => ts >= threshold);
     valid.push(now);
-    this.attempts.set(key, valid);
+    this.attempts.set(key, { timestamps: valid, lastSeen: now });
+
+    if (this.attempts.size > this.maxTrackers) {
+      this.evictOldest(this.attempts.size - this.maxTrackers);
+    }
+
     return valid.length;
+  }
+
+  private maybeCleanup(now: number): void {
+    const shouldRunByTime = now - this.lastCleanupAt >= this.cleanupIntervalMs;
+    const shouldRunBySize = this.attempts.size > this.maxTrackers;
+
+    if (!shouldRunByTime && !shouldRunBySize) {
+      return;
+    }
+
+    this.lastCleanupAt = now;
+    const threshold = now - this.maxWindowMs;
+
+    for (const [key, bucket] of this.attempts.entries()) {
+      const valid = bucket.timestamps.filter((ts) => ts >= threshold);
+
+      if (valid.length === 0) {
+        this.attempts.delete(key);
+        continue;
+      }
+
+      this.attempts.set(key, {
+        timestamps: valid,
+        lastSeen: valid[valid.length - 1],
+      });
+    }
+
+    if (this.attempts.size > this.maxTrackers) {
+      this.evictOldest(this.attempts.size - this.maxTrackers);
+    }
+  }
+
+  private evictOldest(count: number): void {
+    if (count <= 0) {
+      return;
+    }
+
+    const oldest = [...this.attempts.entries()]
+      .sort((a, b) => a[1].lastSeen - b[1].lastSeen)
+      .slice(0, count);
+
+    for (const [key] of oldest) {
+      this.attempts.delete(key);
+    }
   }
 
   private getRouteKey(request: any): string {
