@@ -1,7 +1,7 @@
 import { Address } from './address.model';
 import { BaseModel } from './base.model';
 
-export class User extends BaseModel {
+export class Parent extends BaseModel {
   name: string;
   children?: string[]; // array of child IDs
   document?: string;
@@ -10,7 +10,7 @@ export class User extends BaseModel {
   contact?: string;
   companyId?: string;
 
-  constructor(init?: Partial<User>) {
+  constructor(init?: Partial<Parent>) {
     super(init);
     Object.assign(this, init);
   }

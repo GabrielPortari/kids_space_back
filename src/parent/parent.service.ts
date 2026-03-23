@@ -6,7 +6,7 @@ import {
 import { CreateParentDto } from './dto/create-parent.dto';
 import { UpdateParentDto } from './dto/update-parent.dto';
 import { ParentEntity } from './entities/parent.entity';
-import { User } from '../models/parent.model';
+import { Parent } from '../models/parent.model';
 import { FindParentsQueryDto } from './dto/find-parents-query.dto';
 import { UpdateParentAdminDto } from './dto/update-parent-admin.dto';
 import { Address } from '../models/address.model';
@@ -35,7 +35,7 @@ export class ParentService {
       targetCompanyId = actorCompanyId;
     }
 
-    const parentModel = new User({
+    const parentModel = new Parent({
       companyId: targetCompanyId,
       name: createParentDto.name?.trim(),
       email: createParentDto.email
@@ -147,7 +147,7 @@ export class ParentService {
     }
 
     const normalizedUpdate = this.normalizeUpdatePayload(updateParentDto);
-    const merged = Object.assign(new User(existing), normalizedUpdate);
+    const merged = Object.assign(new Parent(existing), normalizedUpdate);
 
     const data = ParentEntity.toFirestore(merged);
     await docRef.update(data);
@@ -173,7 +173,7 @@ export class ParentService {
   private normalizeUpdatePayload(
     updateParentDto: Partial<UpdateParentDto | UpdateParentAdminDto>,
   ) {
-    const payload: Partial<User> = {
+    const payload: Partial<Parent> = {
       ...updateParentDto,
     };
 
