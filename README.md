@@ -125,11 +125,118 @@ Comportamentos implementados no service:
   - state do endereco em uppercase
 - validacao de ownership por companyId antes de operacoes sensíveis.
 
+### Parent (v2)
+
+Base path:
+
+- /v2/parents
+
+Endpoints implementados:
+
+- POST /v2/parents (create)
+- GET /v2/parents (findAll)
+- GET /v2/parents/:parentId (findOne)
+- PATCH /v2/parents/:parentId (update)
+- DELETE /v2/parents/:parentId (delete)
+
+Regras de autorizacao implementadas:
+
+- ParentOwnerOrCompanyGuard aplicado nas rotas com :parentId.
+- collaborator e company acessam/alteram apenas parents da propria company.
+- admin pode acessar qualquer parent.
+- em operacoes de escrita (create/update/delete):
+  - para company/collaborator, companyId vem do token autenticado
+  - para admin, companyId no body e obrigatorio
+
+Comportamentos implementados no service:
+
+- filtros por name, email, document com client-side matching.
+- normalizacao de dados:
+  - email em lowercase
+  - document e contact em trim
+  - state do endereco em uppercase
+- endereco persistido e normalizado em create/update.
+- validacao de ownership por companyId antes de operacoes sensíveis.
+
+### Child (v2)
+
+Base path:
+
+- /v2/children
+
+Endpoints implementados:
+
+- POST /v2/children (create)
+- GET /v2/children (findAll)
+- GET /v2/children/:childId (findOne)
+- PATCH /v2/children/:childId (update)
+- DELETE /v2/children/:childId (delete)
+
+Regras de autorizacao implementadas:
+
+- ChildOwnerOrCompanyGuard aplicado nas rotas com :childId.
+- collaborator e company acessam/alteram apenas children da propria company.
+- admin pode acessar qualquer child.
+- em operacoes de escrita (create/update/delete):
+  - para company/collaborator, companyId vem do token autenticado
+  - para admin, companyId no body e obrigatorio
+
+Comportamentos implementados no service:
+
+- filtros por name, email, document com client-side matching.
+- normalizacao de dados:
+  - email em lowercase
+  - document e contact em trim
+  - state do endereco em uppercase
+- endereco persistido e normalizado em create/update.
+- validacao de ownership por companyId e relacao com parents.
+- validacao de ciclo em relacionamento com parents.
+
+### Attendance (v2)
+
+Base path:
+
+- /v2/attendance
+
+Endpoints implementados:
+
+- POST /v2/attendance/checkin (check-in de crianca)
+- POST /v2/attendance/checkout (check-out com confirmacao de CPF)
+- GET /v2/attendance (findAll)
+- GET /v2/attendance/:attendanceId (findOne)
+- PATCH /v2/attendance/:attendanceId (update)
+
+Regras de autorizacao implementadas:
+
+- collaborator, company e admin podem fazer check-in/check-out.
+- em operacoes de leitura:
+  - collaborator e company acessam apenas attendances da propria company
+  - admin pode acessar qualquer attendance
+
+Comportamentos implementados no service:
+
+- transacao Firestore para check-in:
+  - cria documento de attendance com status ativo
+  - cria lock de sessao ativa para prevenir multiplos check-ins simultaneos
+  - valida ciclo de parent-child-company
+- transacao Firestore para check-out:
+  - requer confirmacao de CPF de um responsavel registrado
+  - normaliza CPF para comparacao (remove formatacao)
+  - libera lock de sessao ativa
+  - atualiza documento de attendance com horario e status de saida
+- filtros por childId, parentId, companyId, status com client-side matching.
+- validacao de ownership por companyId antes de operacoes sensíveis.
+
 ## Estado da refatoracao
 
-Os modulos Parent, Child e Attendance ainda estao em refatoracao para o padrao v2.
+Todos os modulos principais (Auth, Company, Collaborator, Parent, Child e Attendance) foram completamente refatorados para o padrao v2 com:
 
-Os modulos Auth, Company e Collaborator foram completamente refatorados para v2.
+- Controllers, Services e DTOs padronizados.
+- Autenticacao via Firebase ID tokens com guards de autorização.
+- Validacao rigorosa de propriedade (ownership) em operacoes sensíveis.
+- Normalizacao de dados em create/update.
+- Testes unitarios cobrindo regras criticas de negócio.
+- Documentacao Swagger completa.
 
 ## Estrutura util
 
