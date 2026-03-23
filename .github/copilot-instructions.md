@@ -11,15 +11,15 @@ Contexto do sistema
 
 2.  Provedor (owner) verifica e aprova/reprova empresas.
 3.  Empresa recebe status (ativa/inativa).
-4.  `companyAdmin` gerencia a empresa e cria `collaborator`.
-5.  `collaborator` cadastra `users` (pais/responsáveis) e `children`.
+4.  `company` gerencia a empresa e cria `collaborator`.
+5.  `collaborator` cadastra `parents` (pais/responsáveis) e `children`.
 6.  `collaborator` realiza check-in e check-out das crianças; check-out exige confirmação de CPF de um responsável.
 
 Papéis e permissões
 
 - `master`: super-usuário do provedor (opera deploys, manutenção crítica).
-- `systemAdmin`: administração global do sistema; pode atuar em qualquer empresa quando necessário.
-- `companyAdmin`: administrador da empresa; pode criar colaboradores e gerir dados da empresa.
+- `admin`: administração global do sistema; pode atuar em qualquer empresa quando necessário.
+- `company`: administrador da empresa; pode criar colaboradores e gerir dados da empresa.
 - `collaborator`: usuário operacional que registra pais, crianças e realiza checkins/checkouts.
 
 Stack e recomendações técnicas
@@ -48,7 +48,7 @@ Onde alterar/consultar código
 - DTOs: `src/**/dto/*.ts` — contratos de entrada; manter estritos para evitar campos indesejados.
 - Guards: `src/roles/roles.guard.ts`, `src/auth/auth.guard.ts` — autorização e autenticação.
 - Firebase: `src/firebase/*` e injeção `@Inject('FIRESTORE')` quando necessário.
-- Exceções: `src/exceptions/*` — usar `AppUnauthorizedException`, `AppBadRequestException` consistentemente.
+- Exceções: usar as exceções padrão do NestJS (por exemplo, `UnauthorizedException`, `BadRequestException`, `NotFoundException`) e os filtros globais já configurados; não criar nem reutilizar wrappers como `AppUnauthorizedException` / `AppBadRequestException`.
 
 Padrões e boas práticas para o repositório
 
@@ -61,16 +61,16 @@ Padrões e boas práticas para o repositório
 Regras de negócio críticas (não remover/alterar sem testes)
 
 - Check-out obliga confirmação do CPF de um responsável.
-- `systemAdmin` pode criar entidades para qualquer `companyId` quando informado no payload; caso contrário, `companyAdmin` e `collaborator` operam apenas na própria empresa.
-- Ao criar criança via `POST /users/:parentId/child` não permitir `companyId` ou `responsibleUserIds` no body enviado pelo cliente; esses campos devem ser geridos pelo back-end.
+- `admin` pode criar entidades para qualquer `companyId` quando informado no payload; caso contrário, `company` e `collaborator` operam apenas na própria empresa.
+- Ao criar criança via `POST /v2/children`, aplicar ownership por role: `admin/master` pode informar `companyId`; `company/collaborator` operam apenas na própria empresa.
 
 Exemplos de endpoints (mapear antes de remover/alterar)
 
 - `POST /auth/login` — login (recebe `LoginDto`).
 - `POST /auth/refresh-auth` — renovar token.
 - `POST /auth/logout` — logout (AuthGuard).
-- `POST /attendance/checkin` — realiza checkin (roles: collaborator, companyAdmin, systemAdmin, master).
-- `POST /attendance/checkout` — realiza checkout (confirmação CPF requerida).
+- `POST /v2/attendance/checkin` — realiza checkin (roles: collaborator, company, admin, master).
+- `POST /v2/attendance/checkout` — realiza checkout (confirmação CPF requerida).
 - `POST /v2/parents` — cria responsável (companyId tratada conforme role).
 - `POST /v2/children` — cria criança (sanitiza payload e valida autorização).
 
@@ -81,7 +81,7 @@ Devops, CI e scripts
 
 Testes e qualidade
 
-- Unit tests: focar em `AttendanceService`, `UserService`, `CollaboratorService`, `CompanyService`.
+- Unit tests: focar em `AttendanceService`, `ParentService`, `ChildService`, `CollaboratorService`, `CompanyService`.
 - Integration / e2e: usar Firestore emulator e mocks para Firebase Admin.
 - Testes de autorização: combinar roles em `RolesGuard` para cobrir permissões.
 

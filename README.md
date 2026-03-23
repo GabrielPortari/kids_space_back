@@ -147,4 +147,4 @@ Configure as variaveis de ambiente do Firebase para executar localmente:
 
 ## Observacao
 
-O documento ENDPOINTS_REPORT_v2.md contem o desenho completo dos endpoints alvo da refatoracao.
+O documento ENDPOINTS_REPORT.md contem o desenho completo dos endpoints alvo da refatoracao.
