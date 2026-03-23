@@ -1,9 +1,9 @@
 import * as admin from 'firebase-admin';
 
 export class BaseModel {
-  id: string;
-  createdAt: Date | admin.firestore.Timestamp | undefined;
-  updatedAt: Date | admin.firestore.Timestamp | undefined;
+  id?: string;
+  createdAt?: Date | admin.firestore.Timestamp | undefined;
+  updatedAt?: Date | admin.firestore.Timestamp | undefined;
 
   constructor(init?: Partial<BaseModel>) {
     Object.assign(this, init);
