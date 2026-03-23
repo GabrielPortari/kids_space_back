@@ -9,10 +9,30 @@ export class CompanyOwnerOrAdminGuard implements CanActivate {
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const companyId = request.params?.id ?? request.params?.companyId;
+    if (!companyId) {
+      return false;
+    }
+
+    const requestUser = request.user as
+      | { uid?: string; role?: string; roles?: string[] }
+      | undefined;
+
+    if (requestUser?.uid) {
+      const roles = [
+        ...(Array.isArray(requestUser.roles) ? requestUser.roles : []),
+        ...(requestUser.role ? [requestUser.role] : []),
+      ];
+
+      if (hasAdminPrivileges(roles)) {
+        return true;
+      }
+
+      return requestUser.uid === companyId;
+    }
+
     const authHeader =
       request.headers['authorization'] || request.headers['Authorization'];
-
-    if (!companyId || !authHeader) {
+    if (!authHeader) {
       return false;
     }
 

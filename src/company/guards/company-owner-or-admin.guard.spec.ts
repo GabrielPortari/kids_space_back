@@ -33,6 +33,32 @@ describe('CompanyOwnerOrAdminGuard', () => {
     expect(allowed).toBe(true);
   });
 
+  it('reuses request.user for owner and skips token verification', async () => {
+    const allowed = await guard.canActivate(
+      mockContext({
+        params: { id: 'biz-1' },
+        headers: {},
+        user: { uid: 'biz-1', role: 'company' },
+      }),
+    );
+
+    expect(allowed).toBe(true);
+    expect(verifyIdToken).not.toHaveBeenCalled();
+  });
+
+  it('reuses request.user for admin and skips token verification', async () => {
+    const allowed = await guard.canActivate(
+      mockContext({
+        params: { id: 'biz-1' },
+        headers: {},
+        user: { uid: 'admin-1', role: 'admin' },
+      }),
+    );
+
+    expect(allowed).toBe(true);
+    expect(verifyIdToken).not.toHaveBeenCalled();
+  });
+
   it('allows admin for any company id', async () => {
     verifyIdToken.mockResolvedValue({ uid: 'admin-1', role: 'admin' });
 
@@ -70,5 +96,17 @@ describe('CompanyOwnerOrAdminGuard', () => {
     );
 
     expect(allowed).toBe(false);
+  });
+
+  it('denies when request.user is absent and auth header is missing', async () => {
+    const allowed = await guard.canActivate(
+      mockContext({
+        params: { id: 'biz-1' },
+        headers: {},
+      }),
+    );
+
+    expect(allowed).toBe(false);
+    expect(verifyIdToken).not.toHaveBeenCalled();
   });
 });
