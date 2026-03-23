@@ -1,5 +1,5 @@
 import * as admin from 'firebase-admin';
-import { User } from '../../models/child.model';
+import { Child } from '../../models/child.model';
 import { BaseModel } from '../../models/base.model';
 import { Collections } from '../../constants/collections';
 
@@ -16,7 +16,7 @@ export class ChildEntity {
       : ChildEntity.collectionRef().doc();
   }
 
-  static toFirestore(model: User) {
+  static toFirestore(model: Child) {
     return BaseModel.toFirestore(model);
   }
 
@@ -24,13 +24,13 @@ export class ChildEntity {
     doc:
       | admin.firestore.DocumentSnapshot
       | admin.firestore.QueryDocumentSnapshot,
-  ): User {
-    return (User as any).fromFirestore(doc) as User;
+  ): Child {
+    return (Child as any).fromFirestore(doc) as Child;
   }
 
   static fromFirestoreList(
     docs: Array<admin.firestore.QueryDocumentSnapshot>,
-  ): User[] {
+  ): Child[] {
     return docs.map((doc) => ChildEntity.fromFirestore(doc));
   }
 }

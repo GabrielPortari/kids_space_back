@@ -71,8 +71,8 @@ Exemplos de endpoints (mapear antes de remover/alterar)
 - `POST /auth/logout` — logout (AuthGuard).
 - `POST /attendance/checkin` — realiza checkin (roles: collaborator, companyAdmin, systemAdmin, master).
 - `POST /attendance/checkout` — realiza checkout (confirmação CPF requerida).
-- `POST /users/register` — cria usuário (companyId tratada conforme role).
-- `POST /users/:parentId/child` — cria criança (sanitiza payload e valida autorização).
+- `POST /v2/parents` — cria responsável (companyId tratada conforme role).
+- `POST /v2/children` — cria criança (sanitiza payload e valida autorização).
 
 Devops, CI e scripts
 
