@@ -17,6 +17,9 @@ export class AdminService {
       email: createAdminDto.email?.trim().toLowerCase(),
       document: createAdminDto.document?.trim(),
       contact: createAdminDto.contact?.trim(),
+      address: createAdminDto.address
+        ? this.normalizeAddress(createAdminDto.address)
+        : undefined,
       active: createAdminDto.active ?? true,
     });
 
@@ -111,6 +114,10 @@ export class AdminService {
       payload.contact = payload.contact.trim();
     }
 
+    if (payload.address) {
+      payload.address = this.normalizeAddress(payload.address);
+    }
+
     const merged = new Admin({
       ...existing,
       ...payload,
@@ -119,6 +126,16 @@ export class AdminService {
     await docRef.update(AdminEntity.toFirestore(merged));
     const updated = await docRef.get();
     return AdminEntity.fromFirestore(updated);
+  }
+
+  private normalizeAddress(address: any) {
+    if (!address) return undefined;
+    return {
+      ...address,
+      state: address.state
+        ? String(address.state).toUpperCase()
+        : address.state,
+    };
   }
 
   async remove(adminId: string) {
