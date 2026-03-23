@@ -15,20 +15,23 @@ export class ChildOwnerOrCompanyGuard implements CanActivate {
   async canActivate(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
     const childId = request.params?.childId ?? request.params?.id;
-    const authHeader =
-      request.headers['authorization'] || request.headers['Authorization'];
-
-    if (!childId || !authHeader) {
-      return false;
-    }
-
-    const [bearer, token] = authHeader.split(' ');
-    if (bearer !== 'Bearer' || !token) {
+    if (!childId) {
       return false;
     }
 
     try {
-      const decoded = await this.firebaseService.verifyIdToken(token, true);
+      const requestUser = request.user as
+        | { uid?: string; role?: string; roles?: string[]; companyId?: string }
+        | undefined;
+
+      const decoded = requestUser?.uid
+        ? requestUser
+        : await this.verifyFromAuthHeader(request);
+
+      if (!decoded) {
+        return false;
+      }
+
       const roles = [
         ...(Array.isArray((decoded as any).roles)
           ? (decoded as any).roles
@@ -55,5 +58,21 @@ export class ChildOwnerOrCompanyGuard implements CanActivate {
       }
       return false;
     }
+  }
+
+  private async verifyFromAuthHeader(request: any) {
+    const authHeader =
+      request.headers['authorization'] || request.headers['Authorization'];
+
+    if (!authHeader) {
+      return null;
+    }
+
+    const [bearer, token] = authHeader.split(' ');
+    if (bearer !== 'Bearer' || !token) {
+      return null;
+    }
+
+    return this.firebaseService.verifyIdToken(token, true);
   }
 }
