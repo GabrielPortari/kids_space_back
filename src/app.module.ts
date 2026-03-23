@@ -4,12 +4,12 @@ import { AdminModule } from './admin/admin.module';
 import { FirebaseModule } from './firebase/firebase.module';
 import { AuthModule } from './auth/auth.module';
 import { ConfigModule } from '@nestjs/config';
-import { CollaboratorModule } from './collaborator/collaborator.module';
 import { RolesModule } from './roles/roles.module';
-import { UserModule } from './users/user.module';
-import { CompanyModule } from './companies/company.module';
-import { ChildrenModule } from './children/children.module';
 import { AttendanceModule } from './attendance/attendance.module';
+import { ChildModule } from './child/child.module';
+import { ParentModule } from './parent/parent.module';
+import { CollaboratorModule } from './collaborator/collaborator.module';
+import { CompanyModule } from './company/company.module';
 
 @Module({
   imports: [
@@ -20,9 +20,9 @@ import { AttendanceModule } from './attendance/attendance.module';
     AdminModule,
     CompanyModule,
     CollaboratorModule,
-    UserModule,
-    ChildrenModule,
     AttendanceModule,
+    ChildModule,
+    ParentModule,
   ],
   providers: [AppService],
 })

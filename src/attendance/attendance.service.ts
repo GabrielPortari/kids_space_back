@@ -1,187 +1,503 @@
-import { Inject, Injectable } from "@nestjs/common";
-import { AppBadRequestException, AppNotFoundException } from "../exceptions";
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
+import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import { CheckoutAttendanceDto } from './dto/checkout-attendance.dto';
+import { AttendanceEntity } from './entities/attendance.entity';
+import { Attendance, AttendanceType } from '../models/attendance.model';
+import { FindAttendancesQueryDto } from './dto/find-attendances-query.dto';
+import { hasAdminPrivileges } from '../constants/roles';
+import { Collections } from '../constants/collections';
+import { ChildEntity } from '../child/entities/child.entity';
+import { ParentEntity } from '../parent/entities/parent.entity';
+import { UpdateAttendanceAdminDto } from './dto/update-attendance-admin.dto';
 import * as admin from 'firebase-admin';
-import { Attendance } from "../models/attendance";
-import { BaseModel } from "../models/base.model";
-import { CreateCheckinDto } from "./dto/create-checkin.dto";
-import { CreateCheckoutDto } from "./dto/create-checkout.dto";
 
 @Injectable()
 export class AttendanceService {
-    
-    private attendanceCollection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
-    constructor(@Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-        this.attendanceCollection = this.firestore.collection('attendanceRecords');
-    }
+  async checkIn(
+    createAttendanceDto: CreateAttendanceDto,
+    actorCompanyId: string,
+    actorUid: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const payloadCompanyId = createAttendanceDto.companyId?.trim();
 
-    async doCheckin(createCheckinDto: CreateCheckinDto) {
-      if (!createCheckinDto?.childId) throw new AppBadRequestException('childId is required for checkin');
+    const targetCompanyId = this.resolveTargetCompanyId(
+      isAdmin,
+      actorCompanyId,
+      payloadCompanyId,
+    );
 
-      const childId = createCheckinDto.childId;
-      const openQuery = this.attendanceCollection
-        .where('childId', '==', childId)
-        .where('attendanceType', '==', 'checkin')
-        .limit(1);
+    const attendanceRef = AttendanceEntity.docRef();
+    const lockRef = this.activeLockRef(
+      targetCompanyId,
+      createAttendanceDto.childId,
+    );
+    const now = new Date();
 
-      const openSnap = await openQuery.get();
-      if (!openSnap.empty) throw new AppBadRequestException('There is already an open attendance session for this child');
+    await admin.firestore().runTransaction(async (tx) => {
+      const childRef = ChildEntity.docRef(createAttendanceDto.childId);
+      const childDoc = await tx.get(childRef);
 
-      const checkInDate = new Date();
+      if (!childDoc.exists) {
+        throw new NotFoundException('Child not found');
+      }
+
+      const child = ChildEntity.fromFirestore(childDoc);
+      if (child.companyId !== targetCompanyId) {
+        throw new NotFoundException('Child not found');
+      }
+
+      if (
+        createAttendanceDto.responsibleIdWhoCheckedInId &&
+        !child.parents?.includes(
+          createAttendanceDto.responsibleIdWhoCheckedInId,
+        )
+      ) {
+        throw new BadRequestException(
+          'Responsible is not linked to the provided child',
+        );
+      }
+
+      const lockDoc = await tx.get(lockRef);
+      if (lockDoc.exists) {
+        throw new BadRequestException('Child already has an active check-in');
+      }
+
+      // Backward compatibility: detect old active attendance that predates lock docs.
+      const legacyActive = await this.findActiveAttendanceInTransaction(
+        tx,
+        createAttendanceDto.childId,
+        targetCompanyId,
+      );
+
+      if (legacyActive) {
+        tx.set(lockRef, {
+          attendanceId: legacyActive.id,
+          companyId: targetCompanyId,
+          childId: createAttendanceDto.childId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+        });
+        throw new BadRequestException('Child already has an active check-in');
+      }
 
       const attendance = new Attendance({
-        attendanceType: 'checkin',
-        notes: createCheckinDto.notes,
-        companyId: createCheckinDto.companyId,
-        collaboratorCheckedInId: createCheckinDto.collaboratorCheckedInId,
-        responsibleId: createCheckinDto.responsibleId,
-        childId: createCheckinDto.childId,
-        checkInTime: checkInDate,
+        attendanceType: AttendanceType.CHECKIN,
+        companyId: targetCompanyId,
+        childId: createAttendanceDto.childId,
+        notes: createAttendanceDto.notes?.trim(),
+        collaboratorWhoCheckedInId: actorUid,
+        responsibleIdWhoCheckedInId:
+          createAttendanceDto.responsibleIdWhoCheckedInId,
+        checkInTime: now,
+        checkOutTime: undefined,
+        timeCheckedInSeconds: 0,
       });
 
-      const data = BaseModel.toFirestore(attendance);
-      const docRef = this.attendanceCollection.doc();
-
-      const saved = await this.firestore.runTransaction(async (t) => {
-        const childRef = this.firestore.collection('children').doc(childId);
-        const childSnap = await t.get(childRef);
-
-        t.set(docRef, data);
-        if (childSnap.exists) {
-          t.update(childRef, { checkedIn: true });
-        } else {
-          t.set(childRef, { checkedIn: true }, { merge: true });
-        }
-
-        return t.get(docRef);
+      tx.set(attendanceRef, AttendanceEntity.toFirestore(attendance));
+      tx.set(lockRef, {
+        attendanceId: attendanceRef.id,
+        companyId: targetCompanyId,
+        childId: createAttendanceDto.childId,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
       });
+    });
 
-      return Attendance.fromFirestore(saved);
-    }
+    const created = await attendanceRef.get();
+    return AttendanceEntity.fromFirestore(created);
+  }
 
-    async doCheckout(createCheckoutDto: CreateCheckoutDto) {
-      if (!createCheckoutDto?.childId) throw new AppBadRequestException('childId is required for checkout');
+  async checkOut(
+    checkoutDto: CheckoutAttendanceDto,
+    actorCompanyId: string,
+    actorUid: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const payloadCompanyId = checkoutDto.companyId?.trim();
+    const targetCompanyId = this.resolveTargetCompanyId(
+      isAdmin,
+      actorCompanyId,
+      payloadCompanyId,
+    );
 
-      const childId = createCheckoutDto.childId;
-      const openQuery = this.attendanceCollection
-        .where('childId', '==', childId)
-        .where('attendanceType', '==', 'checkin')
-        .orderBy('checkInTime', 'desc')
-        .limit(1);
+    const lockRef = this.activeLockRef(targetCompanyId, checkoutDto.childId);
+    let updatedAttendanceId = '';
 
-      const openSnap = await openQuery.get();
-      if (openSnap.empty) throw new AppBadRequestException('No open attendance session found for this child');
+    await admin.firestore().runTransaction(async (tx) => {
+      const childRef = ChildEntity.docRef(checkoutDto.childId);
+      const childDoc = await tx.get(childRef);
 
-      const doc = openSnap.docs[0];
-      const docRef = doc.ref;
+      if (!childDoc.exists) {
+        throw new NotFoundException('Child not found');
+      }
 
-      const saved = await this.firestore.runTransaction(async (transaction) => {
-        const snap = await transaction.get(docRef);
-        const childRef = this.firestore.collection('children').doc(childId);
-        const childSnap = await transaction.get(childRef);
+      const child = ChildEntity.fromFirestore(childDoc);
+      if (child.companyId !== targetCompanyId) {
+        throw new NotFoundException('Child not found');
+      }
 
-        if (!snap.exists) throw new AppNotFoundException('Attendance session not found');
-        const existing = Attendance.fromFirestore(snap);
+      let attendanceId: string | undefined;
+      const lockDoc = await tx.get(lockRef);
+      if (lockDoc.exists) {
+        attendanceId = String(lockDoc.data()?.attendanceId || '');
+      }
 
-        if (existing.attendanceType !== 'checkin') throw new AppBadRequestException('Attendance session is not open');
+      // Backward compatibility: resolve active attendance even if no lock exists.
+      if (!attendanceId) {
+        const legacyActive = await this.findActiveAttendanceInTransaction(
+          tx,
+          checkoutDto.childId,
+          targetCompanyId,
+        );
 
-        let checkInTime: Date | null = null;
-        if (existing.checkInTime) {
-          const v: any = existing.checkInTime;
-          checkInTime = typeof v.toDate === 'function' ? v.toDate() : new Date(v);
+        if (!legacyActive?.id) {
+          throw new NotFoundException('Active attendance not found for child');
         }
 
-        const checkOutDate = new Date();
-        const durationSeconds = checkInTime ? Math.round((checkOutDate.getTime() - checkInTime.getTime()) / 1000) : null;
-
-        const mergedNotes = [createCheckoutDto.notes, existing.notes].filter(Boolean).join('\n') || undefined;
-
-        const updated = new Attendance({
-          ...existing,
-          attendanceType: 'checkout',
-          checkOutTime: checkOutDate,
-          timeCheckedIn: durationSeconds ?? undefined,
-          responsibleId: existing.responsibleId,
-          notes: mergedNotes,
-          collaboratorCheckedOutId: createCheckoutDto.collaboratorCheckedOutId || undefined,
+        attendanceId = legacyActive.id;
+        tx.set(lockRef, {
+          attendanceId,
+          companyId: targetCompanyId,
+          childId: checkoutDto.childId,
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+          updatedAt: admin.firestore.FieldValue.serverTimestamp(),
         });
+      }
 
-        const updateData = BaseModel.toFirestore(updated);
-        transaction.update(docRef, updateData);
-        if (childSnap.exists) {
-          transaction.update(childRef, { checkedIn: false });
-        } else {
-          transaction.set(childRef, { checkedIn: false }, { merge: true });
-        }
+      const attendanceRef = AttendanceEntity.docRef(attendanceId);
+      const attendanceDoc = await tx.get(attendanceRef);
+      if (!attendanceDoc.exists) {
+        throw new NotFoundException('Active attendance not found for child');
+      }
 
-        return transaction.get(docRef);
+      const activeAttendance = AttendanceEntity.fromFirestore(attendanceDoc);
+      if (activeAttendance.checkOutTime) {
+        throw new BadRequestException('Attendance already checked out');
+      }
+
+      const confirmedResponsibleId =
+        await this.confirmResponsibleByDocumentInTransaction(
+          tx,
+          child.parents || [],
+          checkoutDto.responsibleDocument,
+        );
+
+      const checkInTime = activeAttendance.checkInTime
+        ? new Date(activeAttendance.checkInTime)
+        : null;
+      const now = new Date();
+
+      const elapsedSeconds = checkInTime
+        ? Math.max(
+            0,
+            Math.floor((now.getTime() - checkInTime.getTime()) / 1000),
+          )
+        : 0;
+
+      const merged = new Attendance({
+        ...activeAttendance,
+        attendanceType: AttendanceType.CHECKOUT,
+        collaboratorWhoCheckedOutId: actorUid,
+        responsibleIdWhoCheckedOutId: confirmedResponsibleId,
+        checkOutTime: now,
+        timeCheckedInSeconds: elapsedSeconds,
+        notes: checkoutDto.notes?.trim() || activeAttendance.notes,
       });
 
-      return Attendance.fromFirestore(saved);
-    }
-    
-    async getAttendancesByCompanyId(companyId: string) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-      const query = this.attendanceCollection.where('companyId', '==', companyId).orderBy('checkInTime', 'desc');
-      const snap = await query.get();
-      return snap.docs.map(d => Attendance.fromFirestore(d));
-    }
+      tx.update(attendanceRef, AttendanceEntity.toFirestore(merged));
+      tx.delete(lockRef);
+      updatedAttendanceId = attendanceId;
+    });
 
-    async getLast10Attendances(companyId: string) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-      const query = this.attendanceCollection.where('companyId', '==', companyId).orderBy('checkInTime', 'desc').limit(10);
-      const snap = await query.get();
-      return snap.docs.map(d => Attendance.fromFirestore(d));
-    }
+    const updated = await AttendanceEntity.docRef(updatedAttendanceId).get();
+    return AttendanceEntity.fromFirestore(updated);
+  }
 
-    async getActiveCheckinsByCompanyId(companyId: string) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkin').orderBy('checkInTime', 'desc');
-      const snap = await query.get();
-      return snap.docs.map(d => Attendance.fromFirestore(d));
+  async findAll(
+    companyId: string,
+    query: FindAttendancesQueryDto,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const queryCompanyId = query.companyId?.trim();
+
+    let targetCompanyId = companyId;
+    if (isAdmin && queryCompanyId) {
+      targetCompanyId = queryCompanyId;
     }
 
-    async getLastCheckin(companyId: string) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkin').orderBy('checkInTime', 'desc').limit(1);
-      const snap = await query.get();
-      if (snap.empty) return null;
-      return Attendance.fromFirestore(snap.docs[0]);
+    const snapshot = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    let attendances = AttendanceEntity.fromFirestoreList(snapshot.docs);
+
+    if (query.childId) {
+      attendances = attendances.filter(
+        (item) => item.childId === query.childId,
+      );
     }
 
-    async getLastCheckout(companyId: string) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-      const query = this.attendanceCollection.where('companyId', '==', companyId).where('attendanceType', '==', 'checkout').orderBy('checkOutTime', 'desc').limit(1);
-      const snap = await query.get();
-      if (snap.empty) return null;
-      return Attendance.fromFirestore(snap.docs[0]);
+    if (query.collaboratorId) {
+      attendances = attendances.filter(
+        (item) =>
+          item.collaboratorWhoCheckedInId === query.collaboratorId ||
+          item.collaboratorWhoCheckedOutId === query.collaboratorId,
+      );
     }
 
-    async getAttendanceById(id: string) {
-      const doc = await this.attendanceCollection.doc(id).get();
-      if (!doc.exists) return null;
-      return Attendance.fromFirestore(doc);
+    if (query.activeOnly) {
+      attendances = attendances.filter((item) => !item.checkOutTime);
     }
 
-    async getAttendancesBetween(companyId: string, from?: string | Date, to?: string | Date) {
-      if (!companyId) throw new AppBadRequestException('companyId is required');
-
-      let query: admin.firestore.Query<admin.firestore.DocumentData> = this.attendanceCollection.where('companyId', '==', companyId);
-
-      if (from) {
-        const fromDate = from instanceof Date ? from : new Date(String(from));
-        if (isNaN(fromDate.getTime())) throw new AppBadRequestException('Invalid from date');
-        query = query.where('checkInTime', '>=', admin.firestore.Timestamp.fromDate(fromDate));
+    if (query.from) {
+      const fromDate = new Date(query.from);
+      if (!Number.isNaN(fromDate.getTime())) {
+        attendances = attendances.filter((item) => {
+          if (!item.checkInTime) {
+            return false;
+          }
+          return new Date(item.checkInTime) >= fromDate;
+        });
       }
-
-      if (to) {
-        const toDate = to instanceof Date ? to : new Date(String(to));
-        if (isNaN(toDate.getTime())) throw new AppBadRequestException('Invalid to date');
-        query = query.where('checkInTime', '<=', admin.firestore.Timestamp.fromDate(toDate));
-      }
-
-      query = query.orderBy('checkInTime', 'desc');
-
-      const snap = await query.get();
-      return snap.docs.map(d => Attendance.fromFirestore(d));
     }
+
+    if (query.to) {
+      const toDate = new Date(query.to);
+      if (!Number.isNaN(toDate.getTime())) {
+        attendances = attendances.filter((item) => {
+          if (!item.checkInTime) {
+            return false;
+          }
+          return new Date(item.checkInTime) <= toDate;
+        });
+      }
+    }
+
+    return attendances;
+  }
+
+  async findOne(
+    attendanceId: string,
+    companyId?: string,
+    actorRoles?: string[],
+  ) {
+    const doc = await AttendanceEntity.docRef(attendanceId).get();
+    if (!doc.exists) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    const attendance = AttendanceEntity.fromFirestore(doc);
+
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
+      if (attendance.companyId !== companyId) {
+        throw new NotFoundException('Attendance not found');
+      }
+    }
+
+    return attendance;
+  }
+
+  async update(
+    attendanceId: string,
+    updateAttendanceDto: UpdateAttendanceDto | UpdateAttendanceAdminDto,
+    companyId: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const docRef = AttendanceEntity.docRef(attendanceId);
+    const doc = await docRef.get();
+
+    if (!doc.exists) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    const existing = AttendanceEntity.fromFirestore(doc);
+    if (!isAdmin && existing.companyId !== companyId) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    const payload: Partial<Attendance> = {
+      ...updateAttendanceDto,
+    };
+    delete (payload as any).companyId;
+
+    if (payload.notes) {
+      payload.notes = payload.notes.trim();
+    }
+
+    const merged = new Attendance({
+      ...existing,
+      ...payload,
+    });
+
+    await docRef.update(AttendanceEntity.toFirestore(merged));
+    const updated = await docRef.get();
+    return AttendanceEntity.fromFirestore(updated);
+  }
+
+  async delete(attendanceId: string, companyId: string, actorRoles: string[]) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const doc = await AttendanceEntity.docRef(attendanceId).get();
+
+    if (!doc.exists) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    const attendance = AttendanceEntity.fromFirestore(doc);
+    if (!isAdmin && attendance.companyId !== companyId) {
+      throw new NotFoundException('Attendance not found');
+    }
+
+    await AttendanceEntity.docRef(attendanceId).delete();
+  }
+
+  private resolveTargetCompanyId(
+    isAdmin: boolean,
+    actorCompanyId: string,
+    payloadCompanyId?: string,
+  ) {
+    if (isAdmin) {
+      if (!payloadCompanyId) {
+        throw new BadRequestException('companyId is required for admin action');
+      }
+      return payloadCompanyId;
+    }
+
+    return actorCompanyId;
+  }
+
+  private activeLockRef(companyId: string, childId: string) {
+    const lockId = `${encodeURIComponent(companyId)}__${encodeURIComponent(childId)}`;
+    return admin
+      .firestore()
+      .collection(Collections.ATTENDANCE_ACTIVE_LOCKS)
+      .doc(lockId);
+  }
+
+  private async getChildFromCompany(childId: string, companyId: string) {
+    const doc = await ChildEntity.docRef(childId).get();
+    if (!doc.exists) {
+      throw new NotFoundException('Child not found');
+    }
+
+    const child = ChildEntity.fromFirestore(doc);
+    if (child.companyId !== companyId) {
+      throw new NotFoundException('Child not found');
+    }
+
+    return child;
+  }
+
+  private async findActiveAttendance(childId: string, companyId: string) {
+    const snapshot = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', companyId)
+      .where('childId', '==', childId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    const attendances = AttendanceEntity.fromFirestoreList(snapshot.docs);
+    return attendances.find((item) => !item.checkOutTime);
+  }
+
+  private async findActiveAttendanceInTransaction(
+    tx: FirebaseFirestore.Transaction,
+    childId: string,
+    companyId: string,
+  ) {
+    const query = AttendanceEntity.collectionRef()
+      .where('companyId', '==', companyId)
+      .where('childId', '==', childId)
+      .orderBy('createdAt', 'desc');
+
+    const snapshot = await tx.get(query);
+    const attendances = AttendanceEntity.fromFirestoreList(
+      snapshot.docs as any,
+    );
+    return attendances.find((item) => !item.checkOutTime);
+  }
+
+  private normalizeDocument(document: string) {
+    return String(document || '').replace(/\D/g, '');
+  }
+
+  private async confirmResponsibleByDocument(
+    parentIds: string[],
+    responsibleDocument: string,
+  ) {
+    if (!parentIds.length) {
+      throw new BadRequestException('Child has no linked responsibles');
+    }
+
+    const normalizedDocument = this.normalizeDocument(responsibleDocument);
+    if (!normalizedDocument) {
+      throw new BadRequestException('Responsible document is required');
+    }
+
+    const parentDocs = await Promise.all(
+      parentIds.map((parentId) => ParentEntity.docRef(parentId).get()),
+    );
+
+    const parents = parentDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => ParentEntity.fromFirestore(doc));
+
+    const matched = parents.find(
+      (parent) =>
+        this.normalizeDocument(parent.document || '') === normalizedDocument,
+    );
+
+    if (!matched) {
+      throw new BadRequestException(
+        'Responsible CPF does not match child records',
+      );
+    }
+
+    return matched.id;
+  }
+
+  private async confirmResponsibleByDocumentInTransaction(
+    tx: FirebaseFirestore.Transaction,
+    parentIds: string[],
+    responsibleDocument: string,
+  ) {
+    if (!parentIds.length) {
+      throw new BadRequestException('Child has no linked responsibles');
+    }
+
+    const normalizedDocument = this.normalizeDocument(responsibleDocument);
+    if (!normalizedDocument) {
+      throw new BadRequestException('Responsible document is required');
+    }
+
+    const parentDocs = await Promise.all(
+      parentIds.map((parentId) => tx.get(ParentEntity.docRef(parentId))),
+    );
+
+    const parents = parentDocs
+      .filter((doc) => doc.exists)
+      .map((doc) => ParentEntity.fromFirestore(doc));
+
+    const matched = parents.find(
+      (parent) =>
+        this.normalizeDocument(parent.document || '') === normalizedDocument,
+    );
+
+    if (!matched) {
+      throw new BadRequestException(
+        'Responsible CPF does not match child records',
+      );
+    }
+
+    return matched.id;
+  }
 }

@@ -1,178 +1,218 @@
-import { Inject, Injectable } from '@nestjs/common';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
-import { FirebaseService } from '../firebase/firebase.service';
-import * as admin from 'firebase-admin';
-import { Collaborator } from '../models/collaborator.model';
-import { BaseModel } from '../models/base.model';
-import { AppBadRequestException, AppNotFoundException } from '../exceptions';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
+import { CollaboratorEntity } from './entities/collaborator.entity';
+import { Collaborator } from '../models/collaborator.model';
+import { FindCollaboratorsQueryDto } from './dto/find-collaborators-query.dto';
+import { UpdateCollaboratorAdminDto } from './dto/update-collaborator-admin.dto';
+import { Address } from '../models/address.model';
+import { hasAdminPrivileges } from '../constants/roles';
 
 @Injectable()
 export class CollaboratorService {
-  private collaboratorCollection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
-  constructor(private readonly firebaseService: FirebaseService,
-    @Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-    this.collaboratorCollection = this.firestore.collection('collaborators');
+  async create(
+    createCollaboratorDto: CreateCollaboratorDto,
+    actorCompanyId: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const payloadCompanyId = createCollaboratorDto.companyId?.trim();
+
+    let targetCompanyId: string;
+
+    if (isAdmin) {
+      if (!payloadCompanyId) {
+        throw new BadRequestException(
+          'companyId is required for admin creation',
+        );
+      }
+      targetCompanyId = payloadCompanyId;
+    } else {
+      targetCompanyId = actorCompanyId;
+    }
+
+    const collaboratorModel = new Collaborator({
+      companyId: targetCompanyId,
+      name: createCollaboratorDto.name?.trim(),
+      email: createCollaboratorDto.email
+        ? createCollaboratorDto.email.trim().toLowerCase()
+        : undefined,
+      document: createCollaboratorDto.document
+        ? createCollaboratorDto.document.trim()
+        : undefined,
+      contact: createCollaboratorDto.contact
+        ? createCollaboratorDto.contact.trim()
+        : undefined,
+      address: createCollaboratorDto.address
+        ? this.normalizeAddress(createCollaboratorDto.address)
+        : undefined,
+    } as any);
+
+    const docRef = CollaboratorEntity.docRef();
+    const data = CollaboratorEntity.toFirestore(collaboratorModel);
+
+    await docRef.set(data);
+    const created = await docRef.get();
+    return CollaboratorEntity.fromFirestore(created);
   }
 
-  async registerCollaborator(createCollaboratorDto: CreateCollaboratorDto) {
-    const ref = this.collaboratorCollection.doc();
-    const uid = ref.id;
+  async findAll(
+    companyId: string,
+    query: FindCollaboratorsQueryDto,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    const queryCompanyId = query.companyId?.trim();
 
-    // generate a temporary random password (not stored in Firestore)
-    const tempPassword = this.generateRandomPassword(12);
+    let targetCompanyId = companyId;
 
-    // create auth user with the generated uid and temporary password
-    await this.firebaseService.createUser({
-      uid,
-      email: createCollaboratorDto.email,
-      password: tempPassword,
-      displayName: createCollaboratorDto.name,
-    })
-
-    // ensure roles to set in Auth
-    const rolesToSet = createCollaboratorDto.roles ?? ['collaborator'];
-    
-    // set custom claims (roles) in Firebase Auth; rollback user if this fails
-    try {
-      await this.firebaseService.setCustomUserClaims(uid, { roles: rolesToSet });
-      // verify written claims immediately and retry once if mismatch
-      try {
-        const userRecord = await admin.auth().getUser(uid);
-        const existingRoles = (userRecord.customClaims && (userRecord.customClaims as any).roles) || [];
-        const rolesMatch = Array.isArray(existingRoles) && existingRoles.length === rolesToSet.length && rolesToSet.every(r => existingRoles.includes(r));
-        if (!rolesMatch) {
-          await this.firebaseService.setCustomUserClaims(uid, { roles: rolesToSet });
-        }
-      } catch (inspectErr) {
+    if (isAdmin) {
+      if (queryCompanyId) {
+        targetCompanyId = queryCompanyId;
       }
-    } catch (err) {
-      await this.firebaseService.deleteUser(uid).catch(() => {});
-      throw err;
+    } else {
+      targetCompanyId = companyId;
     }
 
-    const collaborator = new Collaborator({
-      id: uid,
-      ...createCollaboratorDto,
-      userType: createCollaboratorDto.userType ?? 'collaborator',
-      roles: rolesToSet,
-      status: createCollaboratorDto.status ?? 'active',
-    });
+    const queryRef: FirebaseFirestore.Query = CollaboratorEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .orderBy('createdAt', 'desc');
 
-    const data = BaseModel.toFirestore(collaborator);
+    const snapshot = await queryRef.get();
+    let collaborators = CollaboratorEntity.fromFirestoreList(snapshot.docs);
 
-    // write Firestore doc and increment company collaborators counter atomically; if it fails, rollback the created Auth user
-    try {
-      const companyId = (collaborator as any).companyId;
-      await this.firestore.runTransaction(async transaction => {
-        // perform reads first
-        let compSnap: admin.firestore.DocumentSnapshot<admin.firestore.DocumentData> | null = null;
-        const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
-        if (companyRef) compSnap = await transaction.get(companyRef);
-        // then perform writes
-        transaction.set(ref, data);
-        if (companyId) {
-          if (compSnap && compSnap.exists) {
-            transaction.update(companyRef!, { collaborators: admin.firestore.FieldValue.increment(1) });
-          } else {
-            transaction.set(companyRef!, { collaborators: 1 }, { merge: true });
-          }
-        }
-      });
-    } catch (err) {
-      await this.firebaseService.deleteUser(uid).catch(() => {});
-      throw err;
+    if (query.name) {
+      const normalizedName = query.name.trim().toLowerCase();
+      collaborators = collaborators.filter((c) =>
+        String(c.name || '')
+          .toLowerCase()
+          .includes(normalizedName),
+      );
     }
 
-    // Ask Firebase to send the password reset email so the user can set their own password
-    try {
-      await this.firebaseService.sendPasswordResetEmail(createCollaboratorDto.email!);
-    } catch (err) {
-      // ignore sending email failure; user creation succeeded
+    if (query.email) {
+      const normalizedEmail = query.email.trim().toLowerCase();
+      collaborators = collaborators.filter(
+        (c) =>
+          c.email && String(c.email).toLowerCase().includes(normalizedEmail),
+      );
+    }
+
+    if (query.document) {
+      const normalizedDocument = query.document.trim();
+      collaborators = collaborators.filter(
+        (c) => c.document && String(c.document).includes(normalizedDocument),
+      );
+    }
+
+    return collaborators;
+  }
+
+  async findOne(
+    collaboratorId: string,
+    companyId?: string,
+    actorRoles?: string[],
+  ) {
+    const doc = await CollaboratorEntity.docRef(collaboratorId).get();
+    if (!doc.exists) throw new NotFoundException('Collaborator not found');
+
+    const collaborator = CollaboratorEntity.fromFirestore(doc);
+
+    if (companyId && actorRoles && !hasAdminPrivileges(actorRoles)) {
+      if (collaborator.companyId !== companyId) {
+        throw new NotFoundException('Collaborator not found');
+      }
     }
 
     return collaborator;
   }
 
-  private generateRandomPassword(length = 12) {
-    const chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()_+[]{}|;:,.<>?';
-    let pass = '';
-    for (let i = 0; i < length; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+  async update(
+    collaboratorId: string,
+    updateCollaboratorDto: UpdateCollaboratorDto | UpdateCollaboratorAdminDto,
+    companyId: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+
+    const docRef = CollaboratorEntity.docRef(collaboratorId);
+    const doc = await docRef.get();
+    if (!doc.exists) throw new NotFoundException('Collaborator not found');
+
+    const existing = CollaboratorEntity.fromFirestore(doc);
+
+    if (!isAdmin && existing.companyId !== companyId) {
+      throw new NotFoundException('Collaborator not found');
     }
-    return pass;
-  }
-  
-  async getCollaboratorById(id: string) {
-    if (!id) throw new AppBadRequestException('id is required to get collaborator');
-    const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
-    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
-    const data = collaboratorDoc.data() as Collaborator | undefined;
-    return { id: collaboratorDoc.id, ...(data || {}) };
+
+    const normalizedUpdate = this.normalizeUpdatePayload(updateCollaboratorDto);
+    const merged = Object.assign(new Collaborator(existing), normalizedUpdate);
+
+    const data = CollaboratorEntity.toFirestore(merged);
+    await docRef.update(data);
+    const updated = await docRef.get();
+    return CollaboratorEntity.fromFirestore(updated);
   }
 
-  async updateCollaborator(id: string, updateCollaboratorDto: UpdateCollaboratorDto) {
-    if (!id) throw new AppBadRequestException('id is required to update collaborator');
-    const collaboratorDocRef = this.collaboratorCollection.doc(id);
-    const collaboratorDoc = await collaboratorDocRef.get();
-    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
-    const current = collaboratorDoc.data();
-    // Prevent changing companyId
-    if ((updateCollaboratorDto as any).companyId && (updateCollaboratorDto as any).companyId !== current?.companyId) {
-      throw new AppBadRequestException('companyId cannot be changed');
+  async delete(
+    collaboratorId: string,
+    companyId: string,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+
+    const doc = await CollaboratorEntity.docRef(collaboratorId).get();
+    if (!doc.exists) throw new NotFoundException('Collaborator not found');
+
+    const collaborator = CollaboratorEntity.fromFirestore(doc);
+
+    if (!isAdmin && collaborator.companyId !== companyId) {
+      throw new NotFoundException('Collaborator not found');
     }
-    const updatedData = {
+
+    await CollaboratorEntity.docRef(collaboratorId).delete();
+  }
+
+  private normalizeUpdatePayload(
+    updateCollaboratorDto: Partial<
+      UpdateCollaboratorDto | UpdateCollaboratorAdminDto
+    >,
+  ) {
+    const payload: Partial<Collaborator> = {
       ...updateCollaboratorDto,
     };
-    // Ensure companyId is not written/overwritten
-    delete (updatedData as any).companyId;
-    await collaboratorDocRef.update(updatedData);
-    const updatedCollaboratorDoc = await collaboratorDocRef.get();
-    return updatedCollaboratorDoc.data();
-  }
 
-  async deleteCollaborator(id: string) {
-    if (!id) throw new AppBadRequestException('id is required to delete collaborator');
-    const collaboratorDoc = await this.collaboratorCollection.doc(id).get();
-    if (!collaboratorDoc.exists) throw new AppNotFoundException(`Collaborator with id ${id} not found`);
-    // Archive collaborator marker and delete Firestore doc in a transaction,
-    // then remove the Auth user.
-    const companyId = (collaboratorDoc.data() as any)?.companyId;
-    await this.firestore.runTransaction(async transaction => {
-      const collRef = this.collaboratorCollection.doc(id);
-      const collDeletedRef = this.firestore.collection('collaborators_deleted').doc(id);
-      // read company before writes
-      const companyRef = companyId ? this.firestore.collection('companies').doc(companyId) : null;
-      const compSnap = companyRef ? await transaction.get(companyRef) : null;
-      // perform writes
-      transaction.set(collDeletedRef, {
-        deletedDate: admin.firestore.FieldValue.serverTimestamp(),
-        companyId: companyId,
-      });
-      transaction.delete(collRef);
-      if (companyId && compSnap && compSnap.exists) {
-        transaction.update(companyRef!, { collaborators: admin.firestore.FieldValue.increment(-1) });
-      }
-    });
+    delete (payload as any).companyId;
 
-    // remove auth user (outside transaction)
-    await this.firebaseService.deleteUser(id);
-    return { message: `Collaborator with id ${id} deleted and archived in collaborators_deleted` };
-  }
-
-  async getAllCollaboratorsFromCompany(companyId?: string) {
-    let snapshot: admin.firestore.QuerySnapshot<admin.firestore.DocumentData>;
-    if (companyId) {
-      const q = this.collaboratorCollection.where('companyId', '==', companyId);
-      snapshot = await q.get();
-    } else {
-      snapshot = await this.collaboratorCollection.get();
+    if (payload.email) {
+      payload.email = payload.email.trim().toLowerCase();
     }
 
-    const collaborators: any[] = [];
-    snapshot.forEach(doc => {
-      collaborators.push({ ...(doc.data() as any), id: doc.id });
-    });
-    return collaborators;
+    if (payload.document) {
+      payload.document = payload.document.trim();
+    }
+
+    if (payload.contact) {
+      payload.contact = payload.contact.trim();
+    }
+
+    if (payload.address) {
+      payload.address = this.normalizeAddress(payload.address as Address);
+    }
+
+    return payload;
+  }
+
+  private normalizeAddress(address: Address): Address {
+    return {
+      ...address,
+      state: address.state
+        ? String(address.state).toUpperCase()
+        : address.state,
+    };
   }
 }

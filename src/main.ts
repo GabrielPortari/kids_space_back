@@ -10,7 +10,7 @@ async function bootstrap() {
   await app.listen(process.env.PORT ?? 3000);
 }
 
-function configureSwagger(app: INestApplication){
+function configureSwagger(app: INestApplication) {
   const config = new DocumentBuilder()
     .setTitle('Kids Space API')
     .setDescription('API documentation for Kids Space application')
@@ -21,12 +21,14 @@ function configureSwagger(app: INestApplication){
   SwaggerModule.setup('api', app, document);
 }
 
-function configureValidationPipe(app: INestApplication){
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    forbidNonWhitelisted: true,
-    transform: true,
-  }));
+function configureValidationPipe(app: INestApplication) {
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      forbidNonWhitelisted: true,
+      transform: true,
+    }),
+  );
 }
 
 bootstrap();

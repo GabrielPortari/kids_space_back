@@ -1,99 +1,150 @@
-import { Inject, Injectable } from '@nestjs/common';
-import * as admin from 'firebase-admin';
-import { FirebaseService } from '../firebase/firebase.service';
+import {
+  BadRequestException,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { CreateAdminDto } from './dto/create-admin.dto';
-import { BaseModel } from '../models/base.model';
 import { UpdateAdminDto } from './dto/update-admin.dto';
-import { AppBadRequestException, AppNotFoundException } from '../exceptions';
+import { AdminEntity } from './entities/admin.entity';
+import { Admin } from '../models/admin.model';
+import { FindAdminsQueryDto } from './dto/find-admins-query.dto';
 
 @Injectable()
 export class AdminService {
-    private adminCollection: admin.firestore.CollectionReference<admin.firestore.DocumentData>;
-    constructor(private readonly firebaseService: FirebaseService,
-        @Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore) {
-        this.adminCollection = this.firestore.collection('admins');
+  async create(createAdminDto: CreateAdminDto) {
+    const model = new Admin({
+      name: createAdminDto.name?.trim(),
+      email: createAdminDto.email?.trim().toLowerCase(),
+      document: createAdminDto.document?.trim(),
+      contact: createAdminDto.contact?.trim(),
+      address: createAdminDto.address
+        ? this.normalizeAddress(createAdminDto.address)
+        : undefined,
+      active: createAdminDto.active ?? true,
+    });
+
+    const docRef = AdminEntity.docRef();
+    await docRef.set(AdminEntity.toFirestore(model));
+    const created = await docRef.get();
+    return AdminEntity.fromFirestore(created);
+  }
+
+  async findAll(query: FindAdminsQueryDto) {
+    let queryRef: FirebaseFirestore.Query = AdminEntity.collectionRef().orderBy(
+      'createdAt',
+      'desc',
+    );
+
+    if (query.active !== undefined) {
+      queryRef = queryRef.where('active', '==', query.active);
     }
 
-    async registerSystemAdmin(createAdminDto: CreateAdminDto) {
-        if (!createAdminDto.password) throw new AppBadRequestException('password is required to create admin');
+    const snapshot = await queryRef.get();
+    let admins = AdminEntity.fromFirestoreList(snapshot.docs);
 
-        const adminAuth = await this.firebaseService.createUser({
-            displayName: createAdminDto.name ?? '',
-            email: createAdminDto.email,
-            password: createAdminDto.password,
-        });
-
-        if (createAdminDto.roles?.length) {
-            await this.firebaseService.setCustomUserClaims(adminAuth.uid, { roles: createAdminDto.roles });
-        }
-
-        const adminFS = {
-            id: adminAuth.uid,
-            userType: createAdminDto.userType,
-            status: createAdminDto.status,
-            phone: createAdminDto.phone,
-            email: createAdminDto.email,
-            name: createAdminDto.name,
-            roles: createAdminDto.roles,
-        };
-
-        const data = BaseModel.toFirestore(adminFS);
-        await this.adminCollection.doc(adminAuth.uid).set(data);
-
-        return adminFS;
+    if (query.name) {
+      const normalized = query.name.trim().toLowerCase();
+      admins = admins.filter((admin) =>
+        String(admin.name || '')
+          .toLowerCase()
+          .includes(normalized),
+      );
     }
 
-    async getAdminById(id: string) {
-        if (!id) throw new AppBadRequestException('id is required to get admin');
-        const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
-        return adminDoc.data();
+    if (query.email) {
+      const normalized = query.email.trim().toLowerCase();
+      admins = admins.filter((admin) =>
+        String(admin.email || '')
+          .toLowerCase()
+          .includes(normalized),
+      );
     }
 
-    async updateSystemAdmin(id: string, updateAdminDto: UpdateAdminDto) {
-        if (!id) throw new AppBadRequestException('id is required to update admin');
-        const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
-
-        // Prepare update for Firebase Auth (do not save password to Firestore)
-        const authUpdate: any = {};
-        if (updateAdminDto.password) authUpdate.password = updateAdminDto.password;
-        if (updateAdminDto.email) authUpdate.email = updateAdminDto.email;
-        if (updateAdminDto.name) authUpdate.displayName = updateAdminDto.name;
-        if (updateAdminDto.phone) authUpdate.phoneNumber = updateAdminDto.phone;
-
-        if (Object.keys(authUpdate).length) {
-            await admin.auth().updateUser(id, authUpdate).catch((err) => {
-                throw new AppBadRequestException(err.message || 'Failed to update auth user');
-            });
-        }
-
-        // Update custom claims if roles provided
-        if (updateAdminDto.roles) await this.firebaseService.setCustomUserClaims(id, { roles: updateAdminDto.roles });
-
-        // Prepare Firestore update, removing sensitive fields
-        const firestoreUpdate: any = { ...updateAdminDto };
-        if (firestoreUpdate.password) delete firestoreUpdate.password;
-
-        await this.adminCollection.doc(id).update(firestoreUpdate);
-        const updatedAdminDoc = await this.adminCollection.doc(id).get();
-        return updatedAdminDoc.data();
+    if (query.document) {
+      const normalized = query.document.trim();
+      admins = admins.filter((admin) =>
+        String(admin.document || '').includes(normalized),
+      );
     }
 
-    async deleteSystemAdmin(id: string) {
-        if (!id) throw new AppBadRequestException('id is required to delete admin');
-        const adminDoc = await this.adminCollection.doc(id).get();
-        if (!adminDoc.exists) throw new AppNotFoundException(`Admin with id ${id} not found`);
+    return admins;
+  }
 
-        // Archive and delete admin doc in a transaction, then remove auth user.
-        await this.firestore.runTransaction(async transaction => {
-            const adminRef = this.adminCollection.doc(id);
-            const adminDeletedRef = this.firestore.collection('admins_deleted').doc(id);
-            transaction.set(adminDeletedRef, { deletedDate: admin.firestore.FieldValue.serverTimestamp() });
-            transaction.delete(adminRef);
-        });
-
-        await this.firebaseService.deleteUser(id);
-        return { message: `Admin with id ${id} deleted and archived in admins_deleted` };
+  async findOne(adminId: string) {
+    const doc = await AdminEntity.docRef(adminId).get();
+    if (!doc.exists) {
+      throw new NotFoundException('Admin not found');
     }
+    return AdminEntity.fromFirestore(doc);
+  }
+
+  async update(adminId: string, updateAdminDto: UpdateAdminDto) {
+    const docRef = AdminEntity.docRef(adminId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    const existing = AdminEntity.fromFirestore(doc);
+
+    if (
+      updateAdminDto.name !== undefined &&
+      !String(updateAdminDto.name).trim()
+    ) {
+      throw new BadRequestException('name cannot be empty');
+    }
+
+    const payload: Partial<Admin> = {
+      ...updateAdminDto,
+    };
+
+    if (payload.name !== undefined) {
+      payload.name = payload.name.trim();
+    }
+
+    if (payload.email !== undefined) {
+      payload.email = payload.email.trim().toLowerCase();
+    }
+
+    if (payload.document !== undefined) {
+      payload.document = payload.document.trim();
+    }
+
+    if (payload.contact !== undefined) {
+      payload.contact = payload.contact.trim();
+    }
+
+    if (payload.address) {
+      payload.address = this.normalizeAddress(payload.address);
+    }
+
+    const merged = new Admin({
+      ...existing,
+      ...payload,
+    });
+
+    await docRef.update(AdminEntity.toFirestore(merged));
+    const updated = await docRef.get();
+    return AdminEntity.fromFirestore(updated);
+  }
+
+  private normalizeAddress(address: any) {
+    if (!address) return undefined;
+    return {
+      ...address,
+      state: address.state
+        ? String(address.state).toUpperCase()
+        : address.state,
+    };
+  }
+
+  async remove(adminId: string) {
+    const docRef = AdminEntity.docRef(adminId);
+    const doc = await docRef.get();
+    if (!doc.exists) {
+      throw new NotFoundException('Admin not found');
+    }
+
+    await docRef.delete();
+  }
 }

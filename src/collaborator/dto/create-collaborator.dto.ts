@@ -1,100 +1,82 @@
-import { UserType } from 'src/models/base-user.model';
-import {
-  IsEmail,
-  IsOptional,
-  IsString,
-  IsDateString,
-  MinLength,
-  IsIn,
-  IsArray,
-} from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import {
+  IsString,
+  IsOptional,
+  IsEmail,
+  ValidateNested,
+  IsNotEmpty,
+} from 'class-validator';
+import { Type } from 'class-transformer';
+
+class AddressDto {
+  @ApiProperty({ example: 'Rua das Flores' })
+  @IsString()
+  @IsNotEmpty()
+  address: string;
+
+  @ApiProperty({ example: '123' })
+  @IsString()
+  @IsNotEmpty()
+  number: string;
+
+  @ApiPropertyOptional({ example: 'Apto 12' })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @ApiProperty({ example: 'Bela Vista' })
+  @IsString()
+  @IsNotEmpty()
+  neighborhood: string;
+
+  @ApiProperty({ example: 'São Paulo' })
+  @IsString()
+  @IsNotEmpty()
+  city: string;
+
+  @ApiProperty({ example: 'SP' })
+  @IsString()
+  @IsNotEmpty()
+  state: string;
+
+  @ApiPropertyOptional({ example: '01234-567' })
+  @IsOptional()
+  @IsString()
+  zipcode?: string;
+}
 
 export class CreateCollaboratorDto {
-  @ApiPropertyOptional({ description: 'Tipo de colaborador', example: 'collaborator' })
-  @IsOptional()
+  @ApiProperty({ example: 'João Silva' })
   @IsString()
-  @IsIn(['collaborator', 'companyAdmin'])
-  userType?: UserType;
+  @IsNotEmpty()
+  name: string;
 
-  @ApiPropertyOptional({ description: 'Status da empresa', enum: ['active', 'inactive'], default: 'active' })
+  @ApiPropertyOptional({ example: 'joao.silva@empresa.com' })
   @IsOptional()
-  @IsIn(['active', 'inactive'])
-  status?: 'active' | 'inactive';
-  
-  @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['collaborator'] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @IsIn(['collaborator', 'companyAdmin'], { each: true })
-  roles?: string[];
-
-  @ApiPropertyOptional({ description: 'URL da foto' })
-  @IsOptional()
-  @IsString()
-  photoUrl?: string;
-
-  @ApiPropertyOptional({ description: 'Nome completo' })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ description: 'E-mail do usuário', format: 'email' })
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Telefone de contato' })
-  @IsOptional()
-  @IsString()
-  phone?: string;
-
-  @ApiPropertyOptional({ description: 'Data de nascimento', format: 'date' })
-  @IsOptional()
-  @IsDateString()
-  birthDate?: string;
-
-  @ApiPropertyOptional({ description: 'Documento (CPF/CNPJ etc.)' })
+  @ApiPropertyOptional({ example: '12345678900' })
   @IsOptional()
   @IsString()
   document?: string;
 
-  @ApiPropertyOptional({ description: 'Endereço' })
+  @ApiPropertyOptional({ example: '+5511999999999' })
   @IsOptional()
   @IsString()
-  address?: string;
+  contact?: string;
 
-  @ApiPropertyOptional({ description: 'Número do endereço' })
+  @ApiPropertyOptional({ type: AddressDto })
   @IsOptional()
-  @IsString()
-  addressNumber?: string;
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto;
 
-  @ApiPropertyOptional({ description: 'Complemento do endereço' })
+  @ApiPropertyOptional({
+    description: 'Company alvo (obrigatorio para admin)',
+    example: 'company_123',
+  })
   @IsOptional()
   @IsString()
-  addressComplement?: string;
-
-  @ApiPropertyOptional({ description: 'Bairro' })
-  @IsOptional()
-  @IsString()
-  neighborhood?: string;
-
-  @ApiPropertyOptional({ description: 'Cidade' })
-  @IsOptional()
-  @IsString()
-  city?: string;
-
-  @ApiPropertyOptional({ description: 'Estado' })
-  @IsOptional()
-  @IsString()
-  state?: string;
-
-  @ApiPropertyOptional({ description: 'CEP' })
-  @IsOptional()
-  @IsString()
-  zipCode?: string;
-
-  @ApiPropertyOptional({ description: 'ID da empresa' })
-  @IsString()
-  @IsOptional()
   companyId?: string;
 }

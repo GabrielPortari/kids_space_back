@@ -1,94 +1,182 @@
-import { Controller, Post, Body, Param, Put, Delete, Request, UseGuards, Get, HttpCode, Inject } from '@nestjs/common';
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Req,
+  UseGuards,
+  HttpCode,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
 import { CollaboratorService } from './collaborator.service';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
-import { ApiBearerAuth, ApiOperation, ApiParam, ApiBody, ApiResponse } from '@nestjs/swagger';
-import { RolesGuard } from 'src/roles/roles.guard';
-import { IdToken } from 'src/auth/dto/id-token.decorator';
-import * as admin from 'firebase-admin';
-import { FirebaseService } from 'src/firebase/firebase.service';
-import { AppUnauthorizedException, AppBadRequestException } from '../exceptions';
+import { Role } from '../constants/roles';
+import { RolesGuard } from '../roles/roles.guard';
+import { IdToken } from '../auth/dto/id-token.decorator';
+import { FirebaseService } from '../firebase/firebase.service';
+import { UpdateCollaboratorAdminDto } from './dto/update-collaborator-admin.dto';
+import { FindCollaboratorsQueryDto } from './dto/find-collaborators-query.dto';
+import { CollaboratorOwnerOrAdminGuard } from './guards/collaborator-owner-or-admin.guard';
 
-@Controller('collaborator')
+@Controller('v2/collaborators')
 export class CollaboratorController {
-  constructor(private readonly service: CollaboratorService,
+  constructor(
+    private readonly collaboratorService: CollaboratorService,
     private readonly firebaseService: FirebaseService,
-    @Inject('FIRESTORE') private readonly firestore: admin.firestore.Firestore,
   ) {}
 
-  @Get(':id')
-  @ApiOperation({ summary: 'Recupera colaborador por id' })
-  @ApiParam({ name: 'id', description: 'Id do colaborador' })
-  @ApiResponse({ status: 200, description: 'Colaborador retornado' })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin', 'collaborator'))
-  async getCollaboratorById(@Param('id') id: string) {
-    return this.service.getCollaboratorById(id);
-  }
-
-  @Get('/company/:companyId')
-  @ApiOperation({ summary: 'Recupera todos os colaboradores de uma empresa' })
-  @ApiParam({ name: 'companyId', description: 'Id da empresa' })
-  @ApiResponse({ status: 200, description: 'Colaboradores retornados' })
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin', 'collaborator'))
-  async getCollaboratorsByCompanyId(@IdToken() token: string, @Param('companyId') companyId?: string) {
-    if (!token) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getAllCollaboratorsFromCompany(companyId);
-  }
   @Post()
-  @ApiOperation({ summary: 'Registra novo colaborador' })
-  @ApiBody({ type: CreateCollaboratorDto })
-  @ApiResponse({ status: 201, description: 'Colaborador registrado' })
+  @UseGuards(RolesGuard(Role.COMPANY, Role.ADMIN))
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
+  @ApiOperation({ summary: 'Cria um novo collaborator' })
+  @ApiResponse({ status: 201, description: 'Collaborator criado com sucesso.' })
   @HttpCode(201)
-  async registerCollaborator(@IdToken() token: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
-    if (!token) throw new AppUnauthorizedException('Missing auth token');
-
-    const decoded = await this.firebaseService.verifyIdToken(token);
-    const uid = decoded.uid;
-    const callerRoles = decoded.roles || [];
-
-    // se o usuário for master/systemAdmin, ele pode criar colaboradores para qualquer empresa, mas deve passar o id da empresa no corpo da requisição
-    if (callerRoles.includes('systemAdmin') || callerRoles.includes('master')) {
-      if (!createCollaboratorDto.companyId) {
-        throw new AppBadRequestException('systemAdmin/master must provide companyId in request body');
-      }
-      return this.service.registerCollaborator(createCollaboratorDto);
+  async create(
+    @IdToken() token: string,
+    @Body() createCollaboratorDto: CreateCollaboratorDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
     }
 
-    // caso contrário, o usuário deve ser companyAdmin e só pode criar usuários para a própria empresa
-    const collaboratorDoc = await this.firestore.collection('collaborators').doc(uid).get();
-    if (!collaboratorDoc.exists) throw new AppUnauthorizedException('Collaborator not found');
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
 
-    const collabData = collaboratorDoc.data() as any;
-    const companyIdFromCollaborator = collabData.companyId;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
 
-    if (!companyIdFromCollaborator) throw new AppUnauthorizedException('Collaborator has no company assigned');
-    createCollaboratorDto.companyId = companyIdFromCollaborator;
-    
-    return this.service.registerCollaborator(createCollaboratorDto);
+    return this.collaboratorService.create(
+      createCollaboratorDto,
+      actorCompanyId,
+      userRoles,
+    );
   }
 
-  @Put(':id')
-  @ApiOperation({ summary: 'Atualiza colaborador' })
-  @ApiParam({ name: 'id', description: 'Id do colaborador' })
-  @ApiBody({ type: CreateCollaboratorDto })
-  @ApiResponse({ status: 200, description: 'Colaborador atualizado' })
+  @Get()
+  @UseGuards(RolesGuard(Role.COMPANY, Role.ADMIN))
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
-  async updateCollaborator(@Param('id') id: string, @Body() createCollaboratorDto: CreateCollaboratorDto) {
-    return this.service.updateCollaborator(id, createCollaboratorDto);
+  @ApiOperation({ summary: 'Lista collaborators' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de collaborators retornada.',
+  })
+  async findAll(
+    @IdToken() token: string,
+    @Query() query: FindCollaboratorsQueryDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.collaboratorService.findAll(actorCompanyId, query, userRoles);
   }
 
-  @Delete(':id')
-  @ApiOperation({ summary: 'Remove colaborador' })
-  @ApiParam({ name: 'id', description: 'Id do colaborador' })
-  @ApiResponse({ status: 204, description: 'Colaborador removido' })
+  @Get(':collaboratorId')
+  @UseGuards(
+    RolesGuard(Role.COMPANY, Role.ADMIN),
+    CollaboratorOwnerOrAdminGuard,
+  )
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('master', 'systemAdmin', 'companyAdmin'))
+  @ApiOperation({ summary: 'Obtem um collaborator por ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Dados do collaborator retornados.',
+  })
+  findOne(@Param('collaboratorId') collaboratorId: string) {
+    return this.collaboratorService.findOne(collaboratorId);
+  }
+
+  @Patch(':collaboratorId')
+  @UseGuards(
+    RolesGuard(Role.COMPANY, Role.ADMIN),
+    CollaboratorOwnerOrAdminGuard,
+  )
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Atualiza um collaborator' })
+  @ApiResponse({
+    status: 200,
+    description: 'Collaborator atualizado com sucesso.',
+  })
+  async update(
+    @IdToken() token: string,
+    @Param('collaboratorId') collaboratorId: string,
+    @Body() updateCollaboratorDto: UpdateCollaboratorAdminDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.collaboratorService.update(
+      collaboratorId,
+      updateCollaboratorDto,
+      actorCompanyId,
+      userRoles,
+    );
+  }
+
+  @Delete(':collaboratorId')
+  @UseGuards(
+    RolesGuard(Role.COMPANY, Role.ADMIN),
+    CollaboratorOwnerOrAdminGuard,
+  )
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Deleta um collaborator' })
+  @ApiResponse({
+    status: 204,
+    description: 'Collaborator deletado com sucesso.',
+  })
   @HttpCode(204)
-  async deleteCollaborator(@Param('id') id: string) {
-    return this.service.deleteCollaborator(id);
+  async delete(
+    @IdToken() token: string,
+    @Param('collaboratorId') collaboratorId: string,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.collaboratorService.delete(
+      collaboratorId,
+      actorCompanyId,
+      userRoles,
+    );
   }
 }

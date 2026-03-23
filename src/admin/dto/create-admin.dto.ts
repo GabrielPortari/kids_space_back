@@ -1,41 +1,83 @@
-import { UserType } from "src/models/base-user.model";
-import { IsString, IsOptional, IsEmail, MinLength, IsIn, IsArray } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
+import { Type } from 'class-transformer';
+import {
+  IsBoolean,
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  ValidateNested,
+} from 'class-validator';
+
+class AddressDto {
+  @ApiProperty({ example: 'Rua das Flores' })
+  @IsString()
+  @IsNotEmpty()
+  address: string;
+
+  @ApiProperty({ example: '123' })
+  @IsString()
+  @IsNotEmpty()
+  number: string;
+
+  @ApiPropertyOptional({ example: 'Apto 12' })
+  @IsOptional()
+  @IsString()
+  complement?: string;
+
+  @ApiProperty({ example: 'Centro' })
+  @IsString()
+  @IsNotEmpty()
+  neighborhood: string;
+
+  @ApiProperty({ example: 'Sao Paulo' })
+  @IsString()
+  @IsNotEmpty()
+  city: string;
+
+  @ApiProperty({ example: 'SP' })
+  @IsString()
+  @IsNotEmpty()
+  state: string;
+
+  @ApiPropertyOptional({ example: '01001-000' })
+  @IsOptional()
+  @IsString()
+  zipcode?: string;
+}
 
 export class CreateAdminDto {
-  @ApiProperty({ description: 'Tipo de admin', example: 'systemAdmin' })
+  @ApiProperty({
+    description: 'Nome do admin',
+    example: 'Administrador Global',
+  })
   @IsString()
-  @IsIn(['systemAdmin'])
-  userType: UserType;
+  @IsNotEmpty()
+  name: string;
 
-  @ApiPropertyOptional({ description: 'Status do admin', enum: ['active', 'inactive'], default: 'active' })
+  @ApiPropertyOptional({ description: 'E-mail do admin' })
   @IsOptional()
-  @IsIn(['active', 'inactive'])
-  status?: 'active' | 'inactive';
-
-  @ApiPropertyOptional({ description: 'Roles/Permissões do usuário', example: ['systemAdmin'] })
-  @IsOptional()
-  @IsArray()
-  @IsString({ each: true })
-  @IsIn(['systemAdmin'], { each: true })
-  roles?: string[];
-
-  @ApiPropertyOptional({ description: 'Nome completo' })
-  @IsOptional()
-  @IsString()
-  name?: string;
-
-  @ApiProperty({ description: 'E-mail do admin', format: 'email' })
   @IsEmail()
   email?: string;
 
-  @ApiPropertyOptional({ description: 'Telefone' })
+  @ApiPropertyOptional({ description: 'Documento (CPF)' })
   @IsOptional()
   @IsString()
-  phone?: string;
+  document?: string;
 
-  @ApiProperty({ description: 'Senha (mínimo 6 caracteres)', minLength: 6 })
+  @ApiPropertyOptional({ description: 'Contato do admin' })
+  @IsOptional()
   @IsString()
-  @MinLength(6)
-  password?: string;
+  contact?: string;
+
+  @ApiPropertyOptional({ type: AddressDto })
+  @IsOptional()
+  @ValidateNested()
+  @Type(() => AddressDto)
+  address?: AddressDto;
+
+  @ApiPropertyOptional({ description: 'Status ativo do admin', default: true })
+  @IsOptional()
+  @IsBoolean()
+  active?: boolean;
 }

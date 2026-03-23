@@ -1,8 +1,14 @@
-import { BaseUser } from './base-user.model';
+import { Address } from './address.model';
+import { BaseModel } from './base.model';
 
-export class Child extends BaseUser {
-  responsibleUserIds?: string[];
-  checkedIn?: boolean;
+export class Child extends BaseModel {
+  name: string;
+  parents?: string[]; // array of parent IDs
+  document?: string;
+  address?: Address;
+  email?: string;
+  contact?: string;
+  companyId?: string;
 
   constructor(init?: Partial<Child>) {
     super(init);

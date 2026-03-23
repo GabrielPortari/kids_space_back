@@ -1,10 +1,11 @@
-import { BaseUser } from './base-user.model';
+import { Address } from './address.model';
+import { BaseModel } from './base.model';
 
-export class Collaborator extends BaseUser {
-  roles?: string[];
-  status?: 'active' | 'inactive';
-  constructor(init?: Partial<Collaborator>) {
-    super(init);
-    Object.assign(this, init);
-  }
+export class Collaborator extends BaseModel {
+  companyId: string;
+  name: string;
+  document?: string;
+  address?: Address;
+  email?: string;
+  contact?: string;
 }

@@ -1,112 +1,208 @@
-import { Body, Controller, Get, Param, Post, UseGuards, Query } from "@nestjs/common";
-import { AttendanceService } from "./attendance.service";
-import { RolesGuard } from "src/roles/roles.guard";
-import { ApiBearerAuth, ApiBody, ApiOperation, ApiParam, ApiResponse } from "@nestjs/swagger";
-import { CreateCheckinDto } from "./dto/create-checkin.dto";
-import { CreateCheckoutDto } from "./dto/create-checkout.dto";
-import { IdToken } from "src/auth/dto/id-token.decorator";
-import { AppUnauthorizedException } from '../exceptions'; 
+import {
+  BadRequestException,
+  Controller,
+  Get,
+  Post,
+  Body,
+  Patch,
+  Param,
+  Delete,
+  Query,
+  Req,
+  UseGuards,
+  HttpCode,
+} from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiResponse } from '@nestjs/swagger';
+import { AttendanceService } from './attendance.service';
+import { CreateAttendanceDto } from './dto/create-attendance.dto';
+import { UpdateAttendanceDto } from './dto/update-attendance.dto';
+import { Role } from '../constants/roles';
+import { RolesGuard } from '../roles/roles.guard';
+import { IdToken } from '../auth/dto/id-token.decorator';
+import { FirebaseService } from '../firebase/firebase.service';
+import { CheckoutAttendanceDto } from './dto/checkout-attendance.dto';
+import { FindAttendancesQueryDto } from './dto/find-attendances-query.dto';
+import { AttendanceOwnerOrCompanyGuard } from './guards/attendance-owner-or-company.guard';
+import { UpdateAttendanceAdminDto } from './dto/update-attendance-admin.dto';
 
-@Controller('attendance')
+@Controller('v2/attendance')
 export class AttendanceController {
-  constructor(private readonly service: AttendanceService) {}
+  constructor(
+    private readonly attendanceService: AttendanceService,
+    private readonly firebaseService: FirebaseService,
+  ) {}
 
-  @ApiOperation({ summary: 'Realiza checkin de uma criança' })
-  @ApiBody({ type: CreateCheckinDto })
-  @ApiResponse({ status: 201, description: 'Checkin realizado.' })
   @Post('checkin')
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckin(@IdToken() idToken: string, @Body() createCheckinDto: CreateCheckinDto) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.doCheckin(createCheckinDto);
+  @ApiOperation({ summary: 'Realiza check-in de crianca' })
+  @ApiResponse({ status: 201, description: 'Check-in realizado com sucesso.' })
+  @HttpCode(201)
+  async checkIn(
+    @IdToken() token: string,
+    @Body() createAttendanceDto: CreateAttendanceDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.checkIn(
+      createAttendanceDto,
+      actorCompanyId,
+      uid,
+      userRoles,
+    );
   }
 
-  @ApiOperation({ summary: 'Realiza checkout de uma criança' })
-  @ApiBody({ type: CreateCheckoutDto })
-  @ApiResponse({ status: 201, description: 'Checkout realizado.' })
   @Post('checkout')
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async doCheckout(@IdToken() idToken: string, @Body() createCheckoutDto: CreateCheckoutDto) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.doCheckout(createCheckoutDto);
+  @ApiOperation({
+    summary: 'Realiza checkout de crianca com confirmacao de CPF',
+  })
+  @ApiResponse({ status: 200, description: 'Checkout realizado com sucesso.' })
+  @HttpCode(200)
+  async checkOut(
+    @IdToken() token: string,
+    @Body() checkoutDto: CheckoutAttendanceDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.checkOut(
+      checkoutDto,
+      actorCompanyId,
+      uid,
+      userRoles,
+    );
   }
 
-  @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Registro de atendimento obtido com sucesso.' })
-  @Get('company/:companyId')
+  @Get()
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getAttendanceByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getAttendancesByCompanyId(companyId);
+  @ApiOperation({ summary: 'Lista atendimentos' })
+  @ApiResponse({ status: 200, description: 'Lista de atendimentos retornada.' })
+  async findAll(
+    @IdToken() token: string,
+    @Query() query: FindAttendancesQueryDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.findAll(actorCompanyId, query, userRoles);
   }
 
-  @ApiOperation({ summary: 'Obtém o último checkin da empresa' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Último checkin obtido com sucesso.' })
-  @Get('company/:companyId/last-checkin')
+  @Get(':attendanceId')
+  @UseGuards(
+    RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN),
+    AttendanceOwnerOrCompanyGuard,
+  )
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getLastCheckin(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getLastCheckin(companyId);
+  @ApiOperation({ summary: 'Busca atendimento por ID' })
+  @ApiResponse({ status: 200, description: 'Dados do atendimento retornados.' })
+  findOne(@Param('attendanceId') attendanceId: string) {
+    return this.attendanceService.findOne(attendanceId);
   }
 
-  @ApiOperation({ summary: 'Obtém o último checkout da empresa' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Último checkout obtido com sucesso.' })
-  @Get('company/:companyId/last-checkout')
+  @Patch(':attendanceId')
+  @UseGuards(
+    RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN),
+    AttendanceOwnerOrCompanyGuard,
+  )
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getLastCheckout(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getLastCheckout(companyId);
+  @ApiOperation({ summary: 'Atualiza atendimento por ID' })
+  @ApiResponse({
+    status: 200,
+    description: 'Atendimento atualizado com sucesso.',
+  })
+  async update(
+    @IdToken() token: string,
+    @Param('attendanceId') attendanceId: string,
+    @Body() updateAttendanceDto: UpdateAttendanceAdminDto,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.update(
+      attendanceId,
+      updateAttendanceDto,
+      actorCompanyId,
+      userRoles,
+    );
   }
 
-  @ApiOperation({ summary: 'Obtém os 10 últimos atendimentos da empresa' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Lista dos 10 últimos atendimentos' })
-  @Get('company/:companyId/last-10')
+  @Delete(':attendanceId')
+  @UseGuards(
+    RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN),
+    AttendanceOwnerOrCompanyGuard,
+  )
   @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getLast10Attendances(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getLast10Attendances(companyId);
-  }
+  @ApiOperation({ summary: 'Remove atendimento por ID' })
+  @ApiResponse({
+    status: 204,
+    description: 'Atendimento removido com sucesso.',
+  })
+  @HttpCode(204)
+  async delete(
+    @IdToken() token: string,
+    @Param('attendanceId') attendanceId: string,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
 
-  @ApiOperation({ summary: 'Obtém checkins ativos (sem checkout) da empresa' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Lista de checkins ativos' })
-  @Get('company/:companyId/active-checkins')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getActiveCheckinsByCompanyId(@IdToken() idToken: string, @Param('companyId') companyId: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getActiveCheckinsByCompanyId(companyId);
-  }
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
 
-  @ApiOperation({ summary: 'Busca atendimentos entre duas datas' })
-  @ApiParam({ name: 'companyId', type: String, description: 'ID da empresa' })
-  @ApiResponse({ status: 200, description: 'Lista de atendimentos no período' })
-  @Get('company/:companyId/between')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('companyAdmin', 'systemAdmin', 'master'))
-  async getAttendancesBetween(@IdToken() idToken: string, @Param('companyId') companyId: string, @Query('from') from?: string, @Query('to') to?: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getAttendancesBetween(companyId, from, to);
-  }
-
-  @ApiOperation({ summary: 'Obtém um registro de atendimento por ID' })
-  @ApiParam({ name: 'id', type: String, description: 'ID do registro de atendimento' })
-  @ApiResponse({ status: 200, description: 'Registro de atendimento obtido com sucesso.' })
-  @Get(':id')
-  @ApiBearerAuth()
-  @UseGuards(RolesGuard('collaborator', 'companyAdmin', 'systemAdmin', 'master'))
-  async getAttendanceById(@IdToken() idToken: string, @Param('id') id: string) {
-    if (!idToken) throw new AppUnauthorizedException('Missing auth token');
-    return this.service.getAttendanceById(id);
+    return this.attendanceService.delete(
+      attendanceId,
+      actorCompanyId,
+      userRoles,
+    );
   }
 }
