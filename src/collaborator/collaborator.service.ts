@@ -3,6 +3,7 @@ import {
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
+import * as crypto from 'crypto';
 import { CreateCollaboratorDto } from './dto/create-collaborator.dto';
 import { UpdateCollaboratorDto } from './dto/update-collaborator.dto';
 import { CollaboratorEntity } from './entities/collaborator.entity';
@@ -11,9 +12,12 @@ import { FindCollaboratorsQueryDto } from './dto/find-collaborators-query.dto';
 import { UpdateCollaboratorAdminDto } from './dto/update-collaborator-admin.dto';
 import { Address } from '../models/address.model';
 import { hasAdminPrivileges } from '../constants/roles';
+import { FirebaseService } from '../firebase/firebase.service';
 
 @Injectable()
 export class CollaboratorService {
+  constructor(private readonly firebaseService: FirebaseService) {}
+
   async create(
     createCollaboratorDto: CreateCollaboratorDto,
     actorCompanyId: string,
@@ -35,12 +39,36 @@ export class CollaboratorService {
       targetCompanyId = actorCompanyId;
     }
 
+    // email is required (dto validated)
+    const email = createCollaboratorDto.email.trim().toLowerCase();
+
+    // generate temporary random password
+    const tempPassword = crypto.randomBytes(12).toString('base64');
+
+    // create user in Firebase Auth
+    let userRecord: any = undefined;
+    try {
+      userRecord = await this.firebaseService.createUser({
+        email,
+        password: tempPassword,
+        displayName: createCollaboratorDto.name?.trim(),
+      });
+
+      // set collaborator role and companyId as custom claims
+      await this.firebaseService.setCustomUserClaims(userRecord.uid, {
+        role: 'collaborator',
+        companyId: targetCompanyId,
+      });
+    } catch (err) {
+      // propagate firebase creation errors
+      throw err;
+    }
+
     const collaboratorModel = new Collaborator({
       companyId: targetCompanyId,
       name: createCollaboratorDto.name?.trim(),
-      email: createCollaboratorDto.email
-        ? createCollaboratorDto.email.trim().toLowerCase()
-        : undefined,
+      id: userRecord?.uid,
+      email: email,
       document: createCollaboratorDto.document
         ? createCollaboratorDto.document.trim()
         : undefined,
@@ -55,9 +83,34 @@ export class CollaboratorService {
     const docRef = CollaboratorEntity.docRef();
     const data = CollaboratorEntity.toFirestore(collaboratorModel);
 
-    await docRef.set(data);
-    const created = await docRef.get();
-    return CollaboratorEntity.fromFirestore(created);
+    try {
+      await docRef.set(data);
+      const created = await docRef.get();
+
+      // send password reset email for collaborator to set their password
+      try {
+        await this.firebaseService.sendPasswordResetEmail(email);
+      } catch (sendErr) {
+        // rollback: delete firestore doc and auth user
+        await CollaboratorEntity.docRef(docRef.id)
+          .delete()
+          .catch(() => null);
+        if (userRecord?.uid) {
+          await this.firebaseService
+            .deleteUser(userRecord.uid)
+            .catch(() => null);
+        }
+        throw sendErr;
+      }
+
+      return CollaboratorEntity.fromFirestore(created);
+    } catch (firestoreErr) {
+      // rollback auth user if firestore write failed
+      if (userRecord?.uid) {
+        await this.firebaseService.deleteUser(userRecord.uid).catch(() => null);
+      }
+      throw firestoreErr;
+    }
   }
 
   async findAll(

@@ -51,10 +51,10 @@ export class CreateCollaboratorDto {
   @IsNotEmpty()
   name: string;
 
-  @ApiPropertyOptional({ example: 'joao.silva@empresa.com' })
-  @IsOptional()
+  @ApiProperty({ example: 'joao.silva@empresa.com', format: 'email' })
   @IsEmail()
-  email?: string;
+  @IsNotEmpty()
+  email: string;
 
   @ApiPropertyOptional({ example: '12345678900' })
   @IsOptional()
