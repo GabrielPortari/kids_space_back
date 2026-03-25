@@ -68,7 +68,10 @@ export class CompanyController {
   }
 
   @Get(':companyId')
-  @UseGuards(RolesGuard(Role.COMPANY, Role.ADMIN), CompanyOwnerOrAdminGuard)
+  @UseGuards(
+    RolesGuard(Role.COMPANY, Role.ADMIN, Role.COLLABORATOR),
+    CompanyOwnerOrAdminGuard,
+  )
   @ApiBearerAuth()
   @ApiOperation({ summary: 'Obtem dados de uma company por companyId' })
   @ApiResponse({ status: 200, description: 'Dados da company retornados.' })

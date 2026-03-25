@@ -27,7 +27,15 @@ export class CompanyOwnerOrAdminGuard implements CanActivate {
         return true;
       }
 
-      return requestUser.uid === companyId;
+      // allow when request is performed by the company owner (uid === companyId)
+      // or by a collaborator/employee that has the same companyId custom claim
+      if (requestUser.uid === companyId) return true;
+      if (
+        (requestUser as any).companyId &&
+        (requestUser as any).companyId === companyId
+      )
+        return true;
+      return false;
     }
 
     const authHeader =
@@ -54,7 +62,14 @@ export class CompanyOwnerOrAdminGuard implements CanActivate {
         return true;
       }
 
-      return decoded.uid === companyId;
+      // allow company owner or collaborator belonging to the company (via custom claim)
+      if ((decoded as any).uid === companyId) return true;
+      if (
+        (decoded as any).companyId &&
+        (decoded as any).companyId === companyId
+      )
+        return true;
+      return false;
     } catch {
       return false;
     }
