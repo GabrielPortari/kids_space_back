@@ -121,6 +121,106 @@ export class AttendanceController {
     return this.attendanceService.findAll(actorCompanyId, query, userRoles);
   }
 
+  @Get('company/active-checkins')
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
+  @ApiBearerAuth()
+  @ApiOperation({ summary: 'Recupera check-ins ativos de uma company' })
+  @ApiResponse({
+    status: 200,
+    description: 'Lista de check-ins ativos retornada.',
+  })
+  async loadActiveCheckinsForCompany(
+    @IdToken() token: string,
+    @Query('companyId') queryCompanyId: string,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.loadActiveCheckinsForCompany(
+      actorCompanyId,
+      queryCompanyId?.trim(),
+      userRoles,
+    );
+  }
+
+  @Get('company/last10')
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Recupera os últimos 10 atendimentos de uma company',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Últimos 10 atendimentos retornados.',
+  })
+  async loadLast10AttendancesForCompany(
+    @IdToken() token: string,
+    @Query('companyId') queryCompanyId: string,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.loadLast10AttendancesForCompany(
+      actorCompanyId,
+      queryCompanyId?.trim(),
+      userRoles,
+    );
+  }
+
+  @Get('company/last-checkin-and-checkout')
+  @UseGuards(RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN))
+  @ApiBearerAuth()
+  @ApiOperation({
+    summary: 'Recupera último checkin e último checkout de uma company',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Últimos checkin e checkout retornados.',
+  })
+  async loadLastCheckinAndCheckoutForCompany(
+    @IdToken() token: string,
+    @Query('companyId') queryCompanyId: string,
+    @Req() request: any,
+  ) {
+    if (!token) {
+      throw new BadRequestException('id token is required');
+    }
+
+    const decoded = await this.firebaseService.verifyIdToken(token, true);
+    const uid = decoded.uid;
+    const actorCompanyId = (decoded as any).companyId || uid;
+    const userRoles = [
+      ...(Array.isArray(request?.user?.roles) ? request.user.roles : []),
+      ...(request?.user?.role ? [request.user.role] : []),
+    ];
+
+    return this.attendanceService.loadLastCheckinAndCheckoutForCompany(
+      actorCompanyId,
+      queryCompanyId?.trim(),
+      userRoles,
+    );
+  }
+
   @Get(':attendanceId')
   @UseGuards(
     RolesGuard(Role.COLLABORATOR, Role.COMPANY, Role.ADMIN),

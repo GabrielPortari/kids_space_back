@@ -280,4 +280,112 @@ describe('AttendanceService', () => {
       );
     }
   });
+
+  it('loads active checkins for company', async () => {
+    // prepare snapshot with one active checkin (no checkOutTime)
+    const activeDoc = doc('att-active', {
+      companyId: 'company-1',
+      childId: 'child-1',
+      checkOutTime: undefined,
+      attendanceType: 'checkin',
+    });
+
+    // mock collection chain: where(...).orderBy(...).get()
+    jest.spyOn(AttendanceEntity, 'collectionRef').mockReturnValueOnce({
+      where: jest.fn(() => ({
+        orderBy: jest.fn(() => ({
+          get: jest.fn(async () => ({ docs: [activeDoc] })),
+        })),
+      })),
+    } as any);
+
+    const result = await service.loadActiveCheckinsForCompany(
+      'company-1',
+      undefined,
+      ['collaborator'],
+    );
+
+    expect(result).toEqual([
+      expect.objectContaining({ id: 'att-active', companyId: 'company-1' }),
+    ]);
+  });
+
+  it('loads last 10 attendances for company', async () => {
+    // create 3 docs to simulate returned limited list
+    const docs = [
+      doc('a1', { companyId: 'company-1' }),
+      doc('a2', { companyId: 'company-1' }),
+      doc('a3', { companyId: 'company-1' }),
+    ];
+
+    jest.spyOn(AttendanceEntity, 'collectionRef').mockReturnValueOnce({
+      where: jest.fn(() => ({
+        orderBy: jest.fn(() => ({
+          limit: jest.fn(() => ({
+            get: jest.fn(async () => ({ docs })),
+          })),
+        })),
+      })),
+    } as any);
+
+    const result = await service.loadLast10AttendancesForCompany(
+      'company-1',
+      undefined,
+      ['collaborator'],
+    );
+
+    expect(result).toHaveLength(3);
+    expect(result[0]).toEqual(expect.objectContaining({ id: 'a1' }));
+  });
+
+  it('loads last checkin and last checkout for company', async () => {
+    const lastCheckinDoc = doc('ck-1', {
+      companyId: 'company-1',
+      attendanceType: 'checkin',
+    });
+    const lastCheckoutDoc = doc('co-1', {
+      companyId: 'company-1',
+      attendanceType: 'checkout',
+    });
+
+    // First call (checkin) returns one doc
+    const chainCheckin = {
+      where: jest.fn(() => ({
+        where: jest.fn(() => ({
+          orderBy: jest.fn(() => ({
+            limit: jest.fn(() => ({
+              get: jest.fn(async () => ({ docs: [lastCheckinDoc] })),
+            })),
+          })),
+        })),
+      })),
+    } as any;
+
+    // Second call (checkout) returns one doc
+    const chainCheckout = {
+      where: jest.fn(() => ({
+        where: jest.fn(() => ({
+          orderBy: jest.fn(() => ({
+            limit: jest.fn(() => ({
+              get: jest.fn(async () => ({ docs: [lastCheckoutDoc] })),
+            })),
+          })),
+        })),
+      })),
+    } as any;
+
+    const spy = jest.spyOn(AttendanceEntity, 'collectionRef');
+    spy.mockReturnValueOnce(chainCheckin).mockReturnValueOnce(chainCheckout);
+
+    const result = await service.loadLastCheckinAndCheckoutForCompany(
+      'company-1',
+      undefined,
+      ['collaborator'],
+    );
+
+    expect(result).toEqual({
+      lastCheckin: expect.objectContaining({ id: 'ck-1' }),
+      lastCheckout: expect.objectContaining({ id: 'co-1' }),
+    });
+  });
 });

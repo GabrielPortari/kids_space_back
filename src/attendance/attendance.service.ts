@@ -361,6 +361,82 @@ export class AttendanceService {
     await AttendanceEntity.docRef(attendanceId).delete();
   }
 
+  async loadActiveCheckinsForCompany(
+    actorCompanyId: string,
+    queryCompanyId: string | undefined,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    let targetCompanyId = actorCompanyId;
+    if (isAdmin && queryCompanyId) {
+      targetCompanyId = queryCompanyId;
+    }
+
+    const snapshot = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .orderBy('createdAt', 'desc')
+      .get();
+
+    let attendances = AttendanceEntity.fromFirestoreList(snapshot.docs);
+    attendances = attendances.filter((item) => !item.checkOutTime);
+    return attendances;
+  }
+
+  async loadLast10AttendancesForCompany(
+    actorCompanyId: string,
+    queryCompanyId: string | undefined,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    let targetCompanyId = actorCompanyId;
+    if (isAdmin && queryCompanyId) {
+      targetCompanyId = queryCompanyId;
+    }
+
+    const snapshot = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .orderBy('createdAt', 'desc')
+      .limit(10)
+      .get();
+
+    return AttendanceEntity.fromFirestoreList(snapshot.docs);
+  }
+
+  async loadLastCheckinAndCheckoutForCompany(
+    actorCompanyId: string,
+    queryCompanyId: string | undefined,
+    actorRoles: string[],
+  ) {
+    const isAdmin = hasAdminPrivileges(actorRoles);
+    let targetCompanyId = actorCompanyId;
+    if (isAdmin && queryCompanyId) {
+      targetCompanyId = queryCompanyId;
+    }
+
+    const checkinSnap = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .where('attendanceType', '==', AttendanceType.CHECKIN)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    const checkoutSnap = await AttendanceEntity.collectionRef()
+      .where('companyId', '==', targetCompanyId)
+      .where('attendanceType', '==', AttendanceType.CHECKOUT)
+      .orderBy('createdAt', 'desc')
+      .limit(1)
+      .get();
+
+    const lastCheckin = checkinSnap.empty
+      ? null
+      : AttendanceEntity.fromFirestore(checkinSnap.docs[0]);
+    const lastCheckout = checkoutSnap.empty
+      ? null
+      : AttendanceEntity.fromFirestore(checkoutSnap.docs[0]);
+
+    return { lastCheckin, lastCheckout };
+  }
+
   private resolveTargetCompanyId(
     isAdmin: boolean,
     actorCompanyId: string,
